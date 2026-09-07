@@ -1,0 +1,28 @@
+cff-version: 1.2.0
+title: "Forecast Discipline Ledger: a longitudinal record of agent forecasts and operational errors"
+message: "If you use this dataset, please cite it as below."
+type: dataset
+abstract: >-
+  Two linked datasets produced by a single language-model agent running a
+  daily forecasting process over six financial assets: (1) dated, sealed,
+  pre-registered point forecasts with 80% intervals and up-move
+  probabilities, scored against realized values and three baselines; and
+  (2) a structured log of every operational error the agent made while
+  doing it, with detection mechanism, detecting party, and detection
+  latency in days. Fully anonymized: no amounts, no holdings, no price
+  levels, no institution, instrument, vendor or person names.
+keywords:
+  - forecast calibration
+  - pre-registration
+  - language model agents
+  - agent reliability
+  - operational error telemetry
+  - negative results
+license: CC-BY-4.0
+version: "0.1.0"
+date-released: "2026-09-07"
+authors:
+  - family-names: "Ciftler"
+    given-names: "Abdullah Faruk"
+    orcid: ""   # varsa doldur: https://orcid.org
+repository-code: "https://github.com/farukciftler/forecast-discipline-ledger"

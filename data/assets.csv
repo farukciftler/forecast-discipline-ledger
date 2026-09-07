@@ -1,0 +1,8 @@
+asset_id,asset_class,description
+A1,spot,"Precious metal, spot, quoted in local currency; morning quote, near-continuous pricing"
+A2,fund_daily,"Open-end fund, ~70% foreign equity with technology tilt; NAV published T+1, business days only"
+A3,fund_daily,"Open-end fund, ~90% equity (61% foreign / 21% domestic), multi-theme, high turnover; NAV T+1"
+A4,fund_daily,"Open-end fund, ~79% precious metals + ~18% commodity-linked fixed income; NAV T+1"
+A5,fund_daily,"Open-end fund, domestic equity (broad domestic index); NAV T+1"
+A6,fx_deposit,Foreign-currency deposit; local-currency value driven by a MANAGED-CRAWL exchange rate
+A7,fund_daily,"Open-end fund, ~92% domestic sovereign/corporate lease certificates (sukuk); low volatility; NAV T+1"
