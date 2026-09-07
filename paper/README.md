@@ -77,12 +77,28 @@ No local LaTeX is required to work on the numbers. To build the PDF you need
 `article` plus `geometry`, `booktabs`, `amsmath`, `hyperref`, `xcolor` and
 `caption` — all present in any standard distribution and on Overleaf.
 
+The manuscript has a bibliography, so a single `pdflatex` pass is not enough.
+Use `latexmk`, which sequences the passes for you:
+
 ```bash
-cd paper && pdflatex main.tex && pdflatex main.tex   # twice, for references
+cd paper && latexmk -pdf main.tex
 ```
 
-Or upload `main.tex` and `numbers.tex` to [Overleaf](https://overleaf.com),
-which is also the usual route to an arXiv submission.
+If you run the passes by hand, all four are required, and skipping `bibtex`
+gives a PDF with an **empty references section** and no error:
+
+```bash
+pdflatex main && bibtex main && pdflatex main && pdflatex main
+```
+
+**On Overleaf, upload the whole `paper/` directory**, not just `main.tex`.
+`numbers.tex` holds every figure the manuscript quotes and `refs.bib` holds the
+bibliography; without them the paper compiles but comes out with blank numbers
+or an empty reference list.
+
+The simplest way to get a correct PDF without installing anything is to take
+the one CI already built: open the latest run under **Actions**, download the
+`manuscript` artifact, or take the PDF attached to the most recent release.
 
 ## Citations
 

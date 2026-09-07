@@ -84,6 +84,36 @@ jobs:
           root_file: main.tex
           latexmk_use_xelatex: false
 
+      - name: Bibliography and cross-references actually resolved
+        # A missing bibtex pass produces an empty reference list and no error.
+        # The build looks green and the PDF is quietly wrong -- the same shape
+        # of failure this paper is about, so it gets a check rather than a
+        # note in a README.
+        run: |
+          cd paper
+          if [ ! -s main.bbl ]; then
+            echo "::error::main.bbl is missing or empty -- bibtex did not run"
+            exit 1
+          fi
+          N=$(grep -c '^\\bibitem' main.bbl || true)
+          C=$(grep -o '\\cite{[a-z0-9]*}' main.tex | sort -u | wc -l | tr -d ' ')
+          echo "bibitems: $N   distinct \\cite keys: $C"
+          if [ "$N" -lt "$C" ]; then
+            echo "::error::$C citations but only $N bibitems -- some entry is missing from refs.bib"
+            exit 1
+          fi
+          if grep -q 'Citation .* undefined' main.log; then
+            echo "::error::undefined citation survived the final pass"
+            grep 'Citation .* undefined' main.log | tail -5
+            exit 1
+          fi
+          if grep -q 'Reference .* undefined' main.log; then
+            echo "::error::undefined cross-reference survived the final pass"
+            grep 'Reference .* undefined' main.log | tail -5
+            exit 1
+          fi
+          echo "ok: bibliography and cross-references resolved"
+
       - uses: actions/upload-artifact@v4
         with:
           name: manuscript
