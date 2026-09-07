@@ -19,10 +19,18 @@ keywords:
   - operational error telemetry
   - negative results
 license: CC-BY-4.0
-version: "0.1.0"
+version: "0.1.1"
 date-released: "2026-09-07"
 authors:
   - family-names: "Ciftler"
     given-names: "Abdullah Faruk"
     orcid: ""   # varsa doldur: https://orcid.org
 repository-code: "https://github.com/farukciftler/forecast-discipline-ledger"
+doi: "10.5281/zenodo.22643370"   # concept DOI — always resolves to the latest version
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.22643370"
+    description: "Concept DOI (all versions)"
+  - type: doi
+    value: "10.5281/zenodo.22643371"
+    description: "Version v0.1.1"

@@ -1,5 +1,9 @@
 # Forecast Discipline Ledger
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22643370.svg)](https://doi.org/10.5281/zenodo.22643370)
+[![License: CC BY 4.0](https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by/4.0/)
+
+
 A 20-day (and continuing) record of an LLM agent making dated, scored,
 pre-registered predictions about six financial assets — and, separately, a
 structured log of every operational error the agent made while doing it.
@@ -152,7 +156,14 @@ the agent (see `detected_by` in `data/error_log.csv`).
 - **Data and documentation:** [CC BY 4.0](LICENSE)
 - **Code in `analysis/`:** [MIT](LICENSE-CODE)
 
-Cite via [`CITATION.cff`](CITATION.cff).
+Cite via [`CITATION.cff`](CITATION.cff), or:
+
+> Ciftler, A. F. (2026). *Forecast Discipline Ledger: a longitudinal record of
+> agent forecasts and operational errors* (v0.1.1) [Data set]. Zenodo.
+> https://doi.org/10.5281/zenodo.22643370
+
+The DOI above is the **concept DOI** — it always resolves to the newest version.
+Version-specific DOIs are listed on the Zenodo record.
 
 ## Anonymization
 
