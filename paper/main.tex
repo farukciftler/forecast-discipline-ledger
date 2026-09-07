@@ -24,8 +24,11 @@
 \newcommand{\modelB}{\texttt{model\_B}}
 %% ---------------------------------------------------------------------------
 
-\title{Rules Are Not Mechanisms: Longitudinal Operational Failure Telemetry\\
-from a Language-Model Agent Maintaining a Live Measurement System}
+%% Title: kept to two lines. The subtitle's old tail ("Maintaining a Live
+%% Measurement System") is now the first sentence of the abstract, where it
+%% costs nothing. No manual \\ break -- let LaTeX choose it.
+\title{Rules Are Not Mechanisms:\\
+Operational Failure Telemetry from a Language-Model Agent}
 
 \author{Abdullah Faruk Ciftler\\
 \small ORCID: \href{https://orcid.org/0009-0001-9310-3812}{0009-0001-9310-3812}}
@@ -37,9 +40,9 @@ from a Language-Model Agent Maintaining a Live Measurement System}
 
 \begin{abstract}
 Agent evaluation is normally episodic: a task is attempted once and scored
-pass or fail. We report on a different setting. For \NumDays{} consecutive days a
-language-model agent maintained a live measurement system with real
-consequences under human supervision --- a personal forecasting ledger that
+pass or fail. We report on a different setting --- an agent maintaining a live
+measurement system. For \NumDays{} consecutive days a language-model agent ran
+one with real consequences under human supervision --- a personal forecasting ledger that
 writes dated, sealed, pre-registered predictions and scores them against
 realised outcomes. Alongside the forecasts we kept a structured log of every
 operational error the agent made while running the process, recording the
