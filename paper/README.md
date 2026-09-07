@@ -127,6 +127,10 @@ The related-work section ends with an explicit statement that we did not find
 prior work releasing longitudinal agent error telemetry. That is a claim about
 our search, not about the literature, and it is phrased that way on purpose.
 
+## Submitting to arXiv
+
+Step by step, including how to fetch the files: **[ARXIV.md](ARXIV.md)**.
+
 ## Before submitting
 
 1. **Decide on model disclosure.** The released data pseudonymises the
