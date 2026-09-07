@@ -1,0 +1,97 @@
+name: verify
+
+# The paper argues that a rule which lives only in prose is a rule contingent
+# on someone remembering it. These checks are the mechanism for that argument
+# applied to the repository itself.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  data:
+    name: dataset reproduces
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Every published finding recomputes from the CSVs
+        run: python3 analysis/reproduce.py
+
+      - name: Manuscript numbers are generated, current, and complete
+        run: python3 paper/check_paper.py
+
+      - name: No non-English residue in the published data
+        run: |
+          if grep -rlP '[\x{00E7}\x{011F}\x{0131}\x{00F6}\x{015F}\x{00FC}\x{00C7}\x{011E}\x{0130}\x{00D6}\x{015E}\x{00DC}]' data/ analysis/ paper/*.py 2>/dev/null; then
+            echo "::error::non-English characters found in published data or code"
+            exit 1
+          fi
+          echo "ok: no non-English residue"
+
+      - name: No vendor, institution or person identifiers in the data
+        run: |
+          PAT='claude|anthropic|openai|gpt-|gemini|llama|BIST|TCMB|TEFAS|Kuveyt|Vakif'
+          if grep -rEli "$PAT" data/ 2>/dev/null; then
+            echo "::error::identifier leaked into data/"
+            exit 1
+          fi
+          echo "ok: no identifiers in data/"
+
+      - name: CITATION.cff parses
+        run: |
+          python3 - <<'PY'
+          import re, sys
+          s = open("CITATION.cff", encoding="utf-8").read()
+          for k in ("cff-version:", "title:", "authors:", "license:", "doi:"):
+              if k not in s:
+                  sys.exit(f"CITATION.cff missing {k}")
+          print("ok: CITATION.cff has the required keys")
+          PY
+
+  paper:
+    name: manuscript builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Regenerate numbers from data
+        run: python3 paper/compute_numbers.py --latex
+
+      - name: Fail if regeneration changed anything
+        run: |
+          if ! git diff --quiet -- paper/numbers.tex; then
+            echo "::error::paper/numbers.tex was stale. Run: python3 paper/compute_numbers.py --latex"
+            git --no-pager diff -- paper/numbers.tex
+            exit 1
+          fi
+          echo "ok: numbers.tex committed state matches the data"
+
+      - name: Compile PDF
+        uses: xu-cheng/latex-action@v3
+        with:
+          working_directory: paper
+          root_file: main.tex
+          latexmk_use_xelatex: false
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: manuscript
+          path: paper/main.pdf
+          if-no-files-found: error
+
+      - name: Attach PDF to the release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: paper/main.pdf

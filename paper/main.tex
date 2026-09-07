@@ -8,6 +8,10 @@
 \usepackage[hidelinks]{hyperref}
 \usepackage{xcolor}
 \usepackage{caption}
+
+%% Numbers are GENERATED, never typed. Regenerate with:
+%%   python3 paper/compute_numbers.py --latex
+\input{numbers}
 \captionsetup{font=small}
 
 %% ---------------------------------------------------------------------------
@@ -33,7 +37,7 @@ from a Language-Model Agent Maintaining a Live Measurement System}
 
 \begin{abstract}
 Agent evaluation is normally episodic: a task is attempted once and scored
-pass or fail. We report on a different setting. For 38 consecutive days a
+pass or fail. We report on a different setting. For \NumDays{} consecutive days a
 language-model agent maintained a live measurement system with real
 consequences under human supervision --- a personal forecasting ledger that
 writes dated, sealed, pre-registered predictions and scores them against
@@ -44,14 +48,15 @@ days it stayed hidden. We release both datasets.
 
 The forecasting results are negative and were pre-registered. The agent beats
 each of three baselines individually but beats all three simultaneously in only
-$118/352 = 33.5\%$ of scored rows ($p = 1.0$, one-sided); prediction intervals
-are too wide ($86.9\%$ coverage against an $80\%$ target, exact binomial
-$p = 2.4\times10^{-4}$); and the up-move probability scores slightly worse than
-the sample base rate (Brier skill score $-0.016$).
+$\BeatAllK/\BeatAllN = \BeatAllRate$ of scored rows ($p = \BeatAllP$,
+one-sided); prediction intervals are too wide ($\CovRate$ coverage against an
+$0.80$ target, exact binomial $p = \CovP$); and the up-move probability scores
+slightly worse than the sample base rate (Brier skill score $\BSS$).
 
-The error log is the more unusual object. Across 97 records, detection latency
-is heavily right-skewed --- median 1 day, mean 9.1, maximum 400 --- and
-$37/97 = 38.1\%$ of records are repeats of an earlier one. We name and
+The error log is the more unusual object. Across \ErrN{} records, detection latency
+is heavily right-skewed --- median \LatMedian{} day, mean \LatMean, maximum
+\LatMax{} --- and $\RepK/\ErrN = \RepRate$ of records are repeats of an
+earlier one. We name and
 illustrate a recurring failure mode of agent-maintained systems: the agent
 writes a correct rule into its own documentation and then does not follow it,
 because \emph{documentation is not a mechanism}. Four instances were identified,
@@ -107,8 +112,8 @@ attribution.
 
 \section{Setup}\label{sec:setup}
 
-\paragraph{The task.} A daily process over seven assets (six forecastable,
-pseudonymised \texttt{A1}--\texttt{A7}): collect prices from machine-readable
+\paragraph{The task.} A daily process over \NumAssets{} assets (six
+forecastable, pseudonymised \texttt{A1}--\texttt{A7}): collect prices from machine-readable
 sources, record a market-state snapshot, resolve any forecasts that have come
 due, scan the day's news, write new forecasts, and commit. Steps that must be
 deterministic are performed by a fixed engine; steps that require judgement
@@ -130,8 +135,8 @@ reporting order. Findings that are not in the plan are labelled exploratory
 and are not counted as evidence. Rule changes increment a protocol version and
 split the pool.
 
-\paragraph{Scale.} 38 forecast days (2026-08-01 to 2026-09-07), 659 forecasts
-written, 383 scored, 97 error records. This is an interim report; the ledger
+\paragraph{Scale.} \NumDays{} forecast days (\FirstDay{} to \LastDay),
+\NumWritten{} forecasts written, \NumScored{} scored, \ErrN{} error records. This is an interim report; the ledger
 continues.
 
 \section{Forecast results are null}\label{sec:forecast}
@@ -143,42 +148,43 @@ continues.
 \toprule
 Baseline & beaten & rate & $p$ (one-sided) \\
 \midrule
-naive             & 244/383 & 0.637 & $4.5\times10^{-8}$ \\
-drift             & 225/352 & 0.639 & $9.8\times10^{-8}$ \\
-momentum          & 265/352 & 0.753 & $2.4\times10^{-22}$ \\
-\textbf{all three simultaneously} & \textbf{118/352} & \textbf{0.335} & \textbf{1.0} \\
+naive             & \BeatNaiveK/\BeatNaiveN & \BeatNaiveRate & $\BeatNaiveP$ \\
+drift             & \BeatDriftK/\BeatDriftN & \BeatDriftRate & $\BeatDriftP$ \\
+momentum          & \BeatMomK/\BeatMomN & \BeatMomRate & $\BeatMomP$ \\
+\textbf{all three simultaneously} & \textbf{\BeatAllK/\BeatAllN} &
+\textbf{\BeatAllRate} & \textbf{\BeatAllP} \\
 \bottomrule
 \end{tabular}
 \caption{Beating any single baseline is easy in a trending sample. Beating all
 three at once is the number that matters, and it fails. Wilson 95\% CI for the
-joint row: $(0.288,\,0.386)$.}
+joint row: $(\BeatAllLo,\,\BeatAllHi)$.}
 \label{tab:baselines}
 \end{table}
 
 Table~\ref{tab:baselines} states the central negative result. Reporting only
 the naive comparison would have supported a headline of ``the agent beats the
 baseline, $p < 10^{-7}$''. That headline would have been an artefact of a
-one-directional sample: $70\%$ of realised moves in the window were upward, so
+one-directional sample: $\BaseRate$ of realised moves in the window were upward, so
 any small positive point forecast beats a zero-change baseline mechanically.
 The joint criterion was fixed in advance for exactly this reason.
 
 \paragraph{Intervals are mis-calibrated in a correctable direction.}
-Coverage is $333/383 = 86.9\%$ (Wilson 95\% CI $0.832$--$0.900$) against an
-$80\%$ target; the exact binomial probability of coverage this high or higher
-under a true $0.80$ is $2.4\times10^{-4}$. The intervals are too wide. Unlike
+Coverage is $\CovK/\CovN = \CovRate$ (Wilson 95\% CI
+$\CovLo$--$\CovHi$) against an $0.80$ target; the exact binomial probability
+of coverage this high or higher under a true $0.80$ is $\CovP$. The intervals are too wide. Unlike
 the point forecasts, this is a measurable and fixable defect, and it is where
 the ledger's own ongoing work is directed.
 
-\paragraph{Probabilities carry no skill.} Mean Brier score is $0.2133$
-($n=360$) against $0.2100$ for a constant forecast at the sample base rate of
-$0.70$, giving a Brier skill score of $-0.016$. The stated probabilities are,
+\paragraph{Probabilities carry no skill.} Mean Brier score is $\BrierModel$
+($n=\BrierN$) against $\BrierBase$ for a constant forecast at the sample base
+rate of $\BaseRate$, giving a Brier skill score of $\BSS$. The stated probabilities are,
 if anything, slightly worse than knowing how often the market went up.
 
 \paragraph{Power.} These figures overstate the evidence. The assets move in
 correlated blocks --- two equity funds share roughly $70\%$ of their exposure,
 two precious-metal instruments track the same underlying --- so the effective
 number of independent observations per day is roughly three, not the nominal
-count. With 38 days, no forecasting conclusion here should be read as more
+count. With \NumDays{} days, no forecasting conclusion here should be read as more
 than ``not demonstrated''.
 
 \section{Operational failure telemetry}\label{sec:errors}
@@ -193,13 +199,13 @@ days between the event and its detection.
 \small
 \begin{tabular}{lr}
 \toprule
-records & 97 \\
-detected by agent / human & 77 / 20 \quad (agent share $0.794$) \\
-detection latency: median / mean / max & 1 / 9.1 / 400 days \\
-latency $p_{75}$ / $p_{90}$ / $p_{95}$ & 7 / 17 / 30 days \\
-latency $\geq 7$ days & 25/97 \\
-latency $\geq 30$ days & 6/97 \\
-repeat of an earlier record & 37/97 $= 0.381$ \; CI95 $(0.291,\,0.481)$ \\
+records & \ErrN \\
+detected by agent / human & \ErrAgent{} / \ErrHuman{} \quad (agent share $\ErrAgentShare$) \\
+detection latency: median / mean / max & \LatMedian{} / \LatMean{} / \LatMax{} days \\
+latency $p_{75}$ / $p_{90}$ / $p_{95}$ & \LatPseventyfive{} / \LatPninety{} / \LatPninetyfive{} days \\
+latency $\geq 7$ days & \LatGeSeven/\ErrN \\
+latency $\geq 30$ days & \LatGeThirty/\ErrN \\
+repeat of an earlier record & \RepK/\ErrN{} $= \RepRate$ \; CI95 $(\RepLo,\,\RepHi)$ \\
 \bottomrule
 \end{tabular}
 \caption{Error log summary. Latency is heavily right-skewed: most errors are
@@ -208,16 +214,16 @@ caught within a day, a minority survive for months.}
 \end{table}
 
 \paragraph{Two features stand out.} First, latency is not merely skewed but
-bimodal in character: the median is one day while the mean is nine and the
-maximum is 400. Routine cross-checking catches errors of value almost
+bimodal in character: the median is \LatMedian{} day while the mean is
+\LatMean{} and the maximum is \LatMax. Routine cross-checking catches errors of value almost
 immediately; a different kind of error survives it entirely. Second, more than
-a third of records ($38.1\%$) are repeats of an earlier record --- the agent
+a third of records ($\RepRate$) are repeats of an earlier record --- the agent
 returns to failure classes it has already documented.
 
 \paragraph{Self-correction appears directionally unbiased.} Of the records
-whose effect on the ledger's own scores was classified, 9 were favourable to
-the agent and 10 unfavourable (two-sided exact $p = 1.0$; favourable share
-$0.474$, CI95 $0.273$--$0.683$). This is the one result here where a
+whose effect on the ledger's own scores was classified, \EffFav{} were
+favourable to the agent and \EffUnfav{} unfavourable (two-sided exact
+$p = \EffP$; favourable share $\EffFavShare$, CI95 $\EffLo$--$\EffHi$). This is the one result here where a
 \emph{significant} finding would have been bad news: a systematic skew toward
 self-favouring corrections would indicate that corrections are chosen after
 seeing which way they cut. No such skew is detected, though the test is
@@ -272,10 +278,11 @@ that caused the rule to be written.
 (a missing field, an unenforced rule) to hide longer than errors of
 \emph{wrong value}, since a wrong number can be cross-checked and a missing
 one cannot. Classifying by error class, absence-like records
-($n = 36$) have median latency $1.0$ days and mean $18.6$; the remainder
-($n = 61$) have median $1.0$ and mean $3.4$. A Mann--Whitney test gives
-$z = -1.60$, two-sided $p = 0.11$: \textbf{not supported}. The difference lives
-entirely in the tail, driven by a single 400-day observation. We report this
+($n = \AbsN$) have median latency $\AbsMedian$ days and mean $\AbsMean$; the
+remainder ($n = \OthN$) have median $\OthMedian$ and mean $\OthMean$. A
+Mann--Whitney test gives $z = \MWZ$, two-sided $p = \MWP$:
+\textbf{not supported}. The difference lives
+entirely in the tail, driven by a single \LatMax-day observation. We report this
 because it was run, and because the hypothesis was formed \emph{after} looking
 at the data; it is registered for prospective testing rather than claimed.
 
@@ -283,8 +290,7 @@ at the data; it is registered for prospective testing rather than claimed.
 
 \paragraph{The log is self-reported.} It is written by the same agent that
 made the errors. Errors the agent never noticed are absent by construction,
-and no amount of internal analysis can recover them. The 20 human-detected
-records give a hint of the miss rate but not an estimate: we do not record
+and no amount of internal analysis can recover them. The \ErrHuman{} human-detected records give a hint of the miss rate but not an estimate: we do not record
 whether the agent \emph{would} have caught what the human caught, so the two
 detectors cannot be compared.
 
@@ -294,8 +300,7 @@ recorded: for each error, whether each detector found it independently. With
 overlap, the unobserved population becomes estimable rather than merely
 acknowledged. We have added the field prospectively; it carries no data yet.
 
-\paragraph{Single agent, single task, small $n$.} One agent, one task, one
-supervisor, 38 days. Nothing here establishes a rate that transfers to other
+\paragraph{Single agent, single task, small $n$.} One agent, one task, one supervisor, \NumDays{} days. Nothing here establishes a rate that transfers to other
 agents. The dataset's value is that it exists and is open, not that it is
 representative.
 
@@ -304,7 +309,9 @@ was introduced after 75 records had accumulated; those records were mapped to
 it \emph{after} the data was visible. The released log therefore distinguishes
 an exploratory pool from a confirmatory pool beginning at the record where the
 vocabulary was fixed. Tests intended as evidence use the confirmatory pool
-only, which currently holds 20 records.
+only, which currently holds 20 records.%
+\footnote{This count is not yet generated; it is fixed by the record at which
+the vocabulary was frozen and moves only as new records accrue.}
 
 \section{Data availability}
 
@@ -337,7 +344,7 @@ instrument identified, which reveals nothing about any person.
 
 \section{Conclusion}
 
-An agent ran a real measurement system for 38 days and produced forecasts with
+An agent ran a real measurement system for \NumDays{} days and produced forecasts with
 no demonstrated skill. That is the uninteresting half of the result, and it was
 pre-registered so that it could not be quietly reframed.
 

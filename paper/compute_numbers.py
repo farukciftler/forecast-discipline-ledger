@@ -7,8 +7,19 @@ library module `numbers`, which `decimal` (and therefore `statistics`) imports.
 Standard library only. Run from the repository root or from paper/.
 Output is deliberately plain text so it can be diffed against the manuscript.
 """
-import csv, math, os, statistics as st
+import argparse, csv, math, os, statistics as st
 from collections import Counter, defaultdict
+
+# Every value the manuscript quotes is registered here as it is computed, then
+# emitted as LaTeX macros. The manuscript must never contain a literal number
+# that came from the data: that is the failure mode this paper is about.
+MACROS = {}
+
+
+def reg(name, value, fmt="{}"):
+    """Record a value for \newcommand emission and return it unchanged."""
+    MACROS[name] = fmt.format(value)
+    return value
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "..", "data")
@@ -69,17 +80,27 @@ def h(t):
     print("\n" + t + "\n" + "-" * len(t))
 
 
+def sci(x, digits=1):
+    """LaTeX scientific notation, e.g. 2.4\\times10^{-4}."""
+    if x == 0:
+        return "0"
+    e = math.floor(math.log10(abs(x)))
+    m = x / 10 ** e
+    return f"{m:.{digits}f}\\times10^{{{e}}}"
+
+
 def main():
     R = [r for r in load("resolutions.csv") if r["status"] == "resolved"]
     F = load("forecasts.csv")
     E = load("error_log.csv")
 
     h("S1  Setup")
-    print(f"  forecasts written      = {len(F)}")
-    print(f"  forecasts scored       = {len(R)}")
+    print(f"  forecasts written      = {reg('NumWritten', len(F))}")
+    print(f"  forecasts scored       = {reg('NumScored', len(R))}")
     days = sorted({r['as_of'] for r in F})
+    reg("NumDays", len(days)); reg("FirstDay", days[0]); reg("LastDay", days[-1])
     print(f"  distinct forecast days = {len(days)}  ({days[0]} .. {days[-1]})")
-    print(f"  assets                 = {len(load('assets.csv'))}")
+    print(f"  assets                 = {reg('NumAssets', len(load('assets.csv')))}")
     print(f"  horizons               = {sorted({r['horizon'] for r in F})}")
 
     h("S3  Forecast results (negative)")
@@ -88,6 +109,9 @@ def main():
     lo, hi = wilson(k, len(inb))
     # two-sided exact binomial against 0.80
     p_lo = sum(math.comb(len(inb), i) * .8 ** i * .2 ** (len(inb) - i) for i in range(k, len(inb) + 1))
+    reg("CovK", k); reg("CovN", len(inb)); reg("CovRate", k/len(inb), "{:.3f}")
+    reg("CovLo", lo, "{:.3f}"); reg("CovHi", hi, "{:.3f}")
+    reg("CovP", sci(p_lo))
     print(f"  interval coverage      = {k}/{len(inb)} = {k/len(inb):.4f}  CI95 ({lo}, {hi})")
     print(f"    exact binomial p(coverage >= observed | true=0.80) = {p_lo:.2e}")
     for col, lab in (("beat_naive", "naive"), ("beat_drift", "drift"),
@@ -96,19 +120,31 @@ def main():
         w = sum(1 for r in v if r[col] in ("True", "1"))
         if v:
             a, b = wilson(w, len(v))
+            pv = binom_tail(w, len(v))
+            tag = {"naive": "Naive", "drift": "Drift", "momentum": "Mom",
+                   "ALL THREE": "All"}[lab]
+            reg(f"Beat{tag}K", w); reg(f"Beat{tag}N", len(v))
+            reg(f"Beat{tag}Rate", w/len(v), "{:.3f}")
+            reg(f"Beat{tag}P", "1.0" if pv > 0.99 else sci(pv))
+            if tag == "All":
+                reg("BeatAllLo", a, "{:.3f}"); reg("BeatAllHi", b, "{:.3f}")
             print(f"  beat {lab:10s} = {w}/{len(v)} = {w/len(v):.4f}  CI95 ({a}, {b})  "
-                  f"p(one-sided >0.5) = {binom_tail(w, len(v)):.4g}")
+                  f"p(one-sided >0.5) = {pv:.4g}")
     br = [num(r["brier"]) for r in R if num(r["brier"]) is not None]
     up = [1 if num(r["actual_pct"]) and num(r["actual_pct"]) > 0 else 0
           for r in R if num(r["brier"]) is not None]
     base = sum(up) / len(up) if up else 0
     clim = sum((base - u) ** 2 for u in up) / len(up) if up else 0
+    reg("BrierModel", st.fmean(br), "{:.4f}"); reg("BrierN", len(br))
+    reg("BrierBase", clim, "{:.4f}"); reg("BaseRate", base, "{:.2f}")
+    reg("BSS", 1 - st.fmean(br)/clim if clim else 0, "{:+.3f}")
     print(f"  Brier (model)          = {st.fmean(br):.4f}   n = {len(br)}")
     print(f"  Brier (running base)   = {clim:.4f}   base rate = {base:.4f}")
     print(f"  Brier skill score      = {1 - st.fmean(br)/clim:+.4f}" if clim else "")
 
     h("S3b  Effective independent observations")
     per = Counter(r["as_of"] for r in R)
+    reg("RowsPerDay", st.fmean(per.values()), "{:.1f}")
     print(f"  scored rows / day      = {st.fmean(per.values()):.2f}")
     print("  assets move in correlated blocks; nominal n overstates power.")
 
@@ -116,6 +152,10 @@ def main():
     lat = sorted(int(r["latency_days"]) for r in E if r["latency_days"].strip().lstrip("-").isdigit())
     who = Counter(r["detected_by"] for r in E)
     rep = sum(1 for r in E if r["is_repeat"] == "yes")
+    reg("ErrN", len(E)); reg("ErrAgent", who["agent"]); reg("ErrHuman", who["human"])
+    reg("ErrAgentShare", who["agent"]/len(E), "{:.3f}")
+    reg("LatMedian", st.median(lat), "{:.0f}"); reg("LatMean", st.fmean(lat), "{:.1f}")
+    reg("LatMax", max(lat))
     print(f"  records                = {len(E)}")
     print(f"  detected by            = {dict(who)}   "
           f"agent share = {who['agent']/len(E):.3f}")
@@ -123,10 +163,16 @@ def main():
           f"max {max(lat)}  n = {len(lat)}")
     for q in (0.75, 0.90, 0.95):
         i = int(q * (len(lat) - 1))
+        reg({75: "LatPseventyfive", 90: "LatPninety",
+             95: "LatPninetyfive"}[int(q*100)], lat[i])
         print(f"    p{int(q*100)}                  = {lat[i]}")
+    reg("LatGeSeven", sum(1 for v in lat if v >= 7))
+    reg("LatGeThirty", sum(1 for v in lat if v >= 30))
     print(f"  latency >= 7 days      = {sum(1 for v in lat if v >= 7)}/{len(lat)}")
     print(f"  latency >= 30 days     = {sum(1 for v in lat if v >= 30)}/{len(lat)}")
     a, b = wilson(rep, len(E))
+    reg("RepK", rep); reg("RepRate", rep/len(E), "{:.3f}")
+    reg("RepLo", a, "{:.3f}"); reg("RepHi", b, "{:.3f}")
     print(f"  repeat of prior record = {rep}/{len(E)} = {rep/len(E):.4f}  CI95 ({a}, {b})")
     cls = Counter(r["class_k"] for r in E if r["class_k"])
     mec = Counter(r["mechanism_k"] for r in E if r["mechanism_k"])
@@ -137,9 +183,13 @@ def main():
     eff = Counter(r["score_effect"] for r in E if r["score_effect"])
     f_, u_ = eff.get("favorable", 0), eff.get("unfavorable", 0)
     print(f"  favorable {f_}  unfavorable {u_}  neutral {eff.get('neutral',0)}  n = {sum(eff.values())}")
+    reg("EffFav", f_); reg("EffUnfav", u_); reg("EffNeutral", eff.get("neutral", 0))
     if f_ + u_:
         p = 2 * min(binom_tail(max(f_, u_), f_ + u_), 1.0)
         a, b = wilson(f_, f_ + u_)
+        reg("EffN", f_ + u_); reg("EffFavShare", f_/(f_+u_), "{:.3f}")
+        reg("EffLo", a, "{:.3f}"); reg("EffHi", b, "{:.3f}")
+        reg("EffP", min(p, 1.0), "{:.2f}")
         print(f"  favorable share        = {f_}/{f_+u_} = {f_/(f_+u_):.4f}  CI95 ({a}, {b})  "
               f"two-sided p = {min(p,1.0):.4f}")
         print("  a skew toward 'favorable' would be BAD news; none is detected.")
@@ -154,6 +204,11 @@ def main():
     print(f"  absence-like (class in {sorted(ABSENCE)}): n={len(x)}  median {st.median(x):.1f}  mean {st.fmean(x):.1f}")
     print(f"  other                                     : n={len(y)}  median {st.median(y):.1f}  mean {st.fmean(y):.1f}")
     U, z, p = mannwhitney(x, y)
+    reg("AbsN", len(x)); reg("AbsMedian", st.median(x), "{:.1f}")
+    reg("AbsMean", st.fmean(x), "{:.1f}")
+    reg("OthN", len(y)); reg("OthMedian", st.median(y), "{:.1f}")
+    reg("OthMean", st.fmean(y), "{:.1f}")
+    reg("MWZ", z, "{:.2f}"); reg("MWP", p, "{:.2f}")
     print(f"  Mann-Whitney U = {U:.0f}  z = {z:.2f}  two-sided p = {p:.4f}")
     print("  EXPLORATORY and NOT SUPPORTED. Reported because it was run.")
 
@@ -163,5 +218,28 @@ def main():
               f"{r['class_k']:12s} {r['mechanism_k']}")
 
 
+def emit_latex(path):
+    """Write \\newcommand definitions consumed by main.tex."""
+    lines = ["% GENERATED FILE - DO NOT EDIT.",
+             "% Produced by paper/compute_numbers.py from data/*.csv.",
+             "% Any manuscript number that is typed by hand is a bug: it will",
+             "% silently go stale as the ledger grows. That is precisely the",
+             "% failure mode this paper documents.",
+             ""]
+    for k in sorted(MACROS):
+        lines.append("\\newcommand{\\%s}{%s}" % (k, MACROS[k]))
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    return len(MACROS)
+
+
 if __name__ == "__main__":
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--latex", metavar="PATH", nargs="?", const="numbers.tex",
+                    help="also write LaTeX macro definitions (default numbers.tex)")
+    args = ap.parse_args()
     main()
+    if args.latex:
+        out = args.latex if os.path.isabs(args.latex) else os.path.join(HERE, args.latex)
+        n = emit_latex(out)
+        print(f"\n[latex] {n} macros -> {out}")
