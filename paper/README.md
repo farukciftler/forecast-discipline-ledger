@@ -9,6 +9,7 @@ Manuscript for the dataset in this repository.
 | `numbers.tex` | **generated**; `\newcommand` for every quoted figure |
 | `compute_numbers.py` | recomputes all of them from `../data/*.csv` |
 | `check_paper.py` | guard: fails if a number was typed by hand or has gone stale |
+| `refs.bib` | bibliography — **every entry verified against the publisher record** |
 
 ## The workflow
 
@@ -72,6 +73,18 @@ cd paper && pdflatex main.tex && pdflatex main.tex   # twice, for references
 
 Or upload `main.tex` and `numbers.tex` to [Overleaf](https://overleaf.com),
 which is also the usual route to an arXiv submission.
+
+## Citations
+
+A paper that corrects a fabricated number must not contain a fabricated
+citation. Every entry in `refs.bib` was checked against the publisher or
+conference record for author list, venue, year, volume and pages before being
+written down; none was reconstructed from memory. Re-verify before submission
+anyway — it costs minutes and the failure mode is severe.
+
+The related-work section ends with an explicit statement that we did not find
+prior work releasing longitudinal agent error telemetry. That is a claim about
+our search, not about the literature, and it is phrased that way on purpose.
 
 ## Before submitting
 

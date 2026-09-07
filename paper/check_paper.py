@@ -26,6 +26,7 @@ BUILTIN = re.compile(
     r"today|hspace|vspace|par|left|right|frac|mathrm|text|url|and|approx|"
     r"S|P|captionsetup|hidelinks|utf|T|a|newline|linewidth|textwidth|"
     r"rho|sum|sigma|mu|alpha|beta|delta|pm|neq|infty|log|exp|min|max|"
+    r"cite|bibliographystyle|bibliography|emph|"
     r"modelA|modelB|em|it|bf|sl|tt|rm|sf|footnotesize|scriptsize|large|Large)$")
 
 
@@ -41,6 +42,9 @@ ALLOWED_LITERALS = {
     "30",     # the ">= 30 days" threshold, a definition not a measurement
     "4.0",    # "CC BY 4.0"
     "10.5281",  # the DOI prefix
+    "1950", "1990", "2007", "2015", "2018", "2024",  # citation years in refs
+    "2310.06770",  # arXiv id
+    "256",   # 2^8 groupings, stated in prose as a combinatorial fact
 }
 
 

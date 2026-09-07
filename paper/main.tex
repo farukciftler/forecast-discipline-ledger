@@ -112,6 +112,52 @@ attribution.
         estimable rather than merely acknowledged (\S\ref{sec:limits}).
 \end{enumerate}
 
+\section{Related work}\label{sec:related}
+
+\paragraph{Agent evaluation is episodic.} Benchmarks such as
+SWE-bench~\cite{jimenez2024swebench} present a task, let an agent attempt it,
+and score the attempt. The design is well suited to measuring capability and
+poorly suited to measuring what happens to a system an agent tends over time.
+An agent that scores well on isolated tasks may still degrade a system it
+maintains, and the degradation is invisible to a benchmark that never runs
+twice on the same artefact. We are not aware of a released dataset that follows
+a single agent through a continuing task and records its operational failures
+with detection latency.
+
+\paragraph{Forecast scoring.} The scoring apparatus used here is standard.
+Proper scoring rules and their decomposition are treated by Gneiting and
+Raftery~\cite{gneiting2007scoring}; the probability score itself dates to
+Brier~\cite{brier1950}. Our contribution to this literature is nil: we use it
+as instrumentation and report that it returns a null. The practice of scoring
+dated judgements against baselines, and of taking the comparison rather than
+the raw hit rate as the unit of evidence, follows the forecasting-tournament
+tradition described by Tetlock and Gardner~\cite{tetlock2015}.
+
+\paragraph{Pre-registration.} Fixing the analysis plan before the data is seen
+is the standard defence against selective reporting~\cite{nosek2018prereg}. It
+is normally applied to a study; here it is applied to a running process, which
+raises a question the literature does not settle: what counts as a
+pre-registration when data accrues daily and hypotheses are added as the
+process reveals them. Our answer --- version the protocol, split the pool, and
+mark anything added after the fact as exploratory --- is a convention, not a
+result.
+
+\paragraph{Latent conditions and incident analysis.} The pattern we name in
+\S\ref{sec:mechanism} is a close relative of Reason's \emph{latent
+conditions}~\cite{reason1990}: a defect introduced long before the failure it
+enables, dormant because nothing exercises it. The difference is the author.
+In Reason's account latent conditions are left by designers for operators to
+trip over; here the agent is both, and writes the very rule it will later fail
+to apply. Whether this makes the failure more or less tractable than the
+human case is open; we can only report that it happened repeatedly and, once,
+inside the audit of this manuscript (\S\ref{sec:limits}).
+
+\paragraph{What we did not find.} We did not find prior work releasing
+longitudinal agent error telemetry with detection latency and attribution, nor
+work applying capture--recapture to estimate an agent's unobserved error
+population. If such work exists we would like to know, and we say this to
+invite correction rather than to claim novelty by absence of search.
+
 \section{Setup}\label{sec:setup}
 
 \paragraph{The task.} A daily process over \NumAssets{} assets (six
@@ -289,14 +335,26 @@ prose is a rule contingent on the agent remembering it at the moment it
 applies --- which is precisely the moment the agent is distracted by the task
 that caused the rule to be written.
 
-\paragraph{A failed exploratory test.} We expected errors of \emph{absence}
-(a missing field, an unenforced rule) to hide longer than errors of
-\emph{wrong value}, since a wrong number can be cross-checked and a missing
-one cannot. Classifying by error class, absence-like records
-($n = \AbsN$) have median latency $\AbsMedian$ days and mean $\AbsMean$; the
-remainder ($n = \OthN$) have median $\OthMedian$ and mean $\OthMean$. A
-Mann--Whitney test gives $z = \MWZ$, two-sided $p = \MWP$:
-\textbf{not supported}. The difference lives
+\paragraph{A failed exploratory test, and why it is weaker than it looks.}
+We expected errors of \emph{absence} (a missing field, an unenforced rule) to
+hide longer than errors of \emph{wrong value}, since a wrong number can be
+cross-checked against another number and a missing one cannot. Absence-like
+records ($n = \AbsN$) have median latency $\AbsMedian$ days and mean
+$\AbsMean$; the remainder ($n = \OthN$) have median $\OthMedian$ and mean
+$\OthMean$. A Mann--Whitney test gives $z = \MWZ$, two-sided $p = \MWP$:
+\textbf{not supported}.
+
+We report it, and we also report why it would not have been evidence had it
+succeeded. The hypothesis was formed after seeing the latency distribution.
+Worse, the operationalisation was too: ``absence-like'' is not a field in the
+log but a grouping of two of the eight error classes, and we chose which two
+\emph{after} looking. With eight classes there are $2^{8}$ possible groupings,
+and nothing constrained our choice except the shape of the data. A test whose
+hypothesis, grouping and direction are all selected post hoc has no
+interpretable $p$-value; the number above is reported for completeness and
+should be read as a description of this sample, not as a test. The hypothesis
+is now registered prospectively, with the grouping fixed in advance, and will
+be answered by records this manuscript has not seen. The difference lives
 entirely in the tail, driven by a single \LatMax-day observation. We report this
 because it was run, and because the hypothesis was formed \emph{after} looking
 at the data; it is registered for prospective testing rather than claimed.
@@ -406,5 +464,8 @@ If agents are going to maintain systems, the useful question is not only how
 often they are right. It is how their being wrong becomes visible, how long
 that takes, and whether writing the lesson down is enough. On the evidence
 here, it is not.
+
+\bibliographystyle{plain}
+\bibliography{refs}
 
 \end{document}
