@@ -150,7 +150,7 @@ the agent (see `detected_by` in `data/error_log.csv`).
 ## License and citation
 
 - **Data and documentation:** [CC BY 4.0](LICENSE)
-- **Code in `analysis/`:** MIT
+- **Code in `analysis/`:** [MIT](LICENSE-CODE)
 
 Cite via [`CITATION.cff`](CITATION.cff).
 
