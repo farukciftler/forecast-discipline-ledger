@@ -11,7 +11,15 @@
 
 %% Numbers are GENERATED, never typed. Regenerate with:
 %%   python3 paper/compute_numbers.py --latex
-\input{numbers}
+%% If numbers.tex is absent or has fallen behind, stop with one readable error
+%% instead of letting every figure fail separately as an undefined control
+%% sequence. Overleaf users hand-carrying files hit exactly this.
+\IfFileExists{numbers.tex}{\input{numbers}}{%
+  \GenericError{}{numbers.tex not found}{}{%
+    Run: python3 paper/compute_numbers.py --latex.
+    On Overleaf, upload the whole paper/ directory, or link the project to the
+    GitHub repository so generated files stay in step.}}
+\providecommand{\NumbersStamp}{\textbf{MISSING}}
 \captionsetup{font=small}
 
 %% ---------------------------------------------------------------------------
@@ -33,7 +41,11 @@ Operational Failure Telemetry from a Language-Model Agent}
 \author{Abdullah Faruk Ciftler\\
 \small ORCID: \href{https://orcid.org/0009-0001-9310-3812}{0009-0001-9310-3812}}
 
-\date{\today\\[2pt]\small Interim report — the ledger is ongoing}
+%% The generation stamp is printed on purpose: this is a living document, and
+%% a numbers.tex that has fallen behind the data should be visible on page one
+%% rather than only in CI.
+\date{\today\\[2pt]\small Interim report, the ledger is ongoing\\[2pt]
+\footnotesize Figures generated \NumbersStamp}
 
 \begin{document}
 \maketitle

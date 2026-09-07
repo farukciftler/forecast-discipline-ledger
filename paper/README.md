@@ -91,7 +91,12 @@ gives a PDF with an **empty references section** and no error:
 pdflatex main && bibtex main && pdflatex main && pdflatex main
 ```
 
-**On Overleaf, upload the whole `paper/` directory**, not just `main.tex`.
+**On Overleaf, link the project to this GitHub repository** rather than
+uploading files by hand. `numbers.tex` is regenerated whenever the data moves,
+and a hand-carried copy goes out of date silently: the symptom is a run of
+`Undefined control sequence` errors for macros that exist in the repository but
+not in your copy. If you do upload by hand, upload the whole `paper/`
+directory, not just `main.tex`.
 `numbers.tex` holds every figure the manuscript quotes and `refs.bib` holds the
 bibliography; without them the paper compiles but comes out with blank numbers
 or an empty reference list.
@@ -99,6 +104,16 @@ or an empty reference list.
 The simplest way to get a correct PDF without installing anything is to take
 the one CI already built: open the latest run under **Actions**, download the
 `manuscript` artifact, or take the PDF attached to the most recent release.
+
+## Two guards inside the manuscript itself
+
+`main.tex` refuses to compile quietly without its generated figures. If
+`numbers.tex` is absent it raises a single readable error naming the command to
+run, instead of failing once per missing macro.
+
+The title page prints **`Figures generated <date>, <n> values`**. This is a
+living document, so a `numbers.tex` that has fallen behind the data is visible
+on page one rather than only in CI.
 
 ## Citations
 

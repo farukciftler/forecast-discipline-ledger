@@ -26,7 +26,8 @@ BUILTIN = re.compile(
     r"today|hspace|vspace|par|left|right|frac|mathrm|text|url|and|approx|"
     r"S|P|captionsetup|hidelinks|utf|T|a|newline|linewidth|textwidth|"
     r"rho|sum|sigma|mu|alpha|beta|delta|pm|neq|infty|log|exp|min|max|"
-    r"cite|bibliographystyle|bibliography|emph|"
+    r"cite|bibliographystyle|bibliography|emph|IfFileExists|GenericError|"
+    r"providecommand|ifdefined|fi|else|relax|space|"
     r"modelA|modelB|em|it|bf|sl|tt|rm|sf|footnotesize|scriptsize|large|Large)$")
 
 

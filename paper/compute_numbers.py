@@ -266,12 +266,19 @@ def main():
 
 def emit_latex(path):
     """Write \\newcommand definitions consumed by main.tex."""
+    import datetime
+    stamp = datetime.date.today().isoformat()
     lines = ["% GENERATED FILE - DO NOT EDIT.",
              "% Produced by paper/compute_numbers.py from data/*.csv.",
              "% Any manuscript number that is typed by hand is a bug: it will",
              "% silently go stale as the ledger grows. That is precisely the",
              "% failure mode this paper documents.",
              ""]
+    # A stamp so that a MISSING numbers.tex produces one legible error instead
+    # of a cascade of "Undefined control sequence", and so that a STALE copy is
+    # visible on the title page of the compiled PDF rather than only in CI.
+    lines.append("\\newcommand{\\NumbersStamp}{%s, %d values}" % (stamp, len(MACROS)))
+    lines.append("")
     for k in sorted(MACROS):
         lines.append("\\newcommand{\\%s}{%s}" % (k, MACROS[k]))
     with open(path, "w", encoding="utf-8") as f:
