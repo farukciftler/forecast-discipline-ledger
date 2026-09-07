@@ -1,0 +1,356 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\usepackage{caption}
+\captionsetup{font=small}
+
+%% ---------------------------------------------------------------------------
+%% AUTHOR DECISION — model disclosure.
+%% The released dataset pseudonymises the forecasting model as model_A/model_B.
+%% If you decide to name the model family in the paper, redefine this macro and
+%% add a sentence to the Data Availability section. Leaving it as-is keeps the
+%% manuscript consistent with the published CSVs.
+\newcommand{\modelA}{\texttt{model\_A}}
+\newcommand{\modelB}{\texttt{model\_B}}
+%% ---------------------------------------------------------------------------
+
+\title{Rules Are Not Mechanisms: Longitudinal Operational Failure Telemetry\\
+from a Language-Model Agent Maintaining a Live Measurement System}
+
+\author{Abdullah Faruk Ciftler\\
+\small ORCID: \href{https://orcid.org/0009-0001-9310-3812}{0009-0001-9310-3812}}
+
+\date{\today\\[2pt]\small Interim report — the ledger is ongoing}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Agent evaluation is normally episodic: a task is attempted once and scored
+pass or fail. We report on a different setting. For 38 consecutive days a
+language-model agent maintained a live measurement system with real
+consequences under human supervision --- a personal forecasting ledger that
+writes dated, sealed, pre-registered predictions and scores them against
+realised outcomes. Alongside the forecasts we kept a structured log of every
+operational error the agent made while running the process, recording the
+error class, the mechanism that caught it, \emph{who} caught it, and how many
+days it stayed hidden. We release both datasets.
+
+The forecasting results are negative and were pre-registered. The agent beats
+each of three baselines individually but beats all three simultaneously in only
+$118/352 = 33.5\%$ of scored rows ($p = 1.0$, one-sided); prediction intervals
+are too wide ($86.9\%$ coverage against an $80\%$ target, exact binomial
+$p = 2.4\times10^{-4}$); and the up-move probability scores slightly worse than
+the sample base rate (Brier skill score $-0.016$).
+
+The error log is the more unusual object. Across 97 records, detection latency
+is heavily right-skewed --- median 1 day, mean 9.1, maximum 400 --- and
+$37/97 = 38.1\%$ of records are repeats of an earlier one. We name and
+illustrate a recurring failure mode of agent-maintained systems: the agent
+writes a correct rule into its own documentation and then does not follow it,
+because \emph{documentation is not a mechanism}. Four instances were identified,
+one of which persisted for 400 days. Finally, we state the limitation that
+governs all of this: the log is written by the same agent that made the errors,
+so errors it never noticed are absent by construction. We propose a
+capture--recapture design that would make the unobserved population estimable.
+\end{abstract}
+
+\section{Introduction}
+
+Most published evaluation of language-model agents is \emph{episodic}. A
+benchmark presents a task, the agent attempts it, and the attempt is scored.
+This design answers ``can the agent do X?'' It does not answer a question that
+matters more once agents are deployed: \emph{what happens to a system an agent
+maintains over months, and how do its failures actually surface?}
+
+Answering that requires a task with three properties that benchmarks usually
+lack. It must be continuing rather than one-shot, so that errors have time to
+compound or to be caught. It must have consequences, so that the agent has
+something to be wrong about. And it must have a human in the loop who
+occasionally notices things the agent did not, so that self-report can be
+partially checked.
+
+This paper reports on such a task and releases the resulting data. The agent
+maintains a forecasting ledger over six financial assets. Each business day it
+records point forecasts, $80\%$ intervals and up-move probabilities at 1-day,
+1-week and 1-month horizons, before outcomes are known; the ledger seals them
+and scores them automatically. The analysis plan was pre-registered and
+protocol changes are versioned, so that observations produced under different
+rules are not pooled.
+
+Our contribution is not a forecasting method. On the contrary, the forecasting
+results are null, and we report them as such. The contribution is the
+\emph{operational telemetry} collected alongside: a structured record of every
+mistake the agent made while running the process, with detection latency and
+attribution.
+
+\paragraph{Contributions.}
+\begin{enumerate}
+  \item A released, anonymised, longitudinal dataset of language-model agent
+        operational errors with detection mechanism, detecting party, and
+        detection latency in days (\S\ref{sec:errors}).
+  \item Pre-registered null results on short-horizon forecasting, including
+        interval mis-calibration in a specific and correctable direction
+        (\S\ref{sec:forecast}).
+  \item A named, illustrated failure mode --- \emph{rules written but not
+        mechanised} --- with four instances and a measured repeat rate
+        (\S\ref{sec:mechanism}).
+  \item A design proposal that would make the unobserved error population
+        estimable rather than merely acknowledged (\S\ref{sec:limits}).
+\end{enumerate}
+
+\section{Setup}\label{sec:setup}
+
+\paragraph{The task.} A daily process over seven assets (six forecastable,
+pseudonymised \texttt{A1}--\texttt{A7}): collect prices from machine-readable
+sources, record a market-state snapshot, resolve any forecasts that have come
+due, scan the day's news, write new forecasts, and commit. Steps that must be
+deterministic are performed by a fixed engine; steps that require judgement
+are performed by the agent. The engine never fetches data and never produces
+forecasts; the agent never computes scores. This split is deliberate: the
+arithmetic must not hallucinate, and neither must the data collection.
+
+\paragraph{What is recorded.} Every forecast carries a point estimate, an
+$80\%$ interval, an up-move probability, a stated confidence, the evidence
+items it was derived from, and an invalidating condition. Resolution is
+automatic against the realised value and against three baselines: \emph{naive}
+(no change), \emph{drift} (mean of the last five observed changes) and
+\emph{momentum} (the last observed change). All three use only information
+available at forecast time.
+
+\paragraph{Pre-registration.} The analysis plan fixes, in advance, which
+hypothesis is primary, which test is applied, the minimum $n$, and the
+reporting order. Findings that are not in the plan are labelled exploratory
+and are not counted as evidence. Rule changes increment a protocol version and
+split the pool.
+
+\paragraph{Scale.} 38 forecast days (2026-08-01 to 2026-09-07), 659 forecasts
+written, 383 scored, 97 error records. This is an interim report; the ledger
+continues.
+
+\section{Forecast results are null}\label{sec:forecast}
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lrrr}
+\toprule
+Baseline & beaten & rate & $p$ (one-sided) \\
+\midrule
+naive             & 244/383 & 0.637 & $4.5\times10^{-8}$ \\
+drift             & 225/352 & 0.639 & $9.8\times10^{-8}$ \\
+momentum          & 265/352 & 0.753 & $2.4\times10^{-22}$ \\
+\textbf{all three simultaneously} & \textbf{118/352} & \textbf{0.335} & \textbf{1.0} \\
+\bottomrule
+\end{tabular}
+\caption{Beating any single baseline is easy in a trending sample. Beating all
+three at once is the number that matters, and it fails. Wilson 95\% CI for the
+joint row: $(0.288,\,0.386)$.}
+\label{tab:baselines}
+\end{table}
+
+Table~\ref{tab:baselines} states the central negative result. Reporting only
+the naive comparison would have supported a headline of ``the agent beats the
+baseline, $p < 10^{-7}$''. That headline would have been an artefact of a
+one-directional sample: $70\%$ of realised moves in the window were upward, so
+any small positive point forecast beats a zero-change baseline mechanically.
+The joint criterion was fixed in advance for exactly this reason.
+
+\paragraph{Intervals are mis-calibrated in a correctable direction.}
+Coverage is $333/383 = 86.9\%$ (Wilson 95\% CI $0.832$--$0.900$) against an
+$80\%$ target; the exact binomial probability of coverage this high or higher
+under a true $0.80$ is $2.4\times10^{-4}$. The intervals are too wide. Unlike
+the point forecasts, this is a measurable and fixable defect, and it is where
+the ledger's own ongoing work is directed.
+
+\paragraph{Probabilities carry no skill.} Mean Brier score is $0.2133$
+($n=360$) against $0.2100$ for a constant forecast at the sample base rate of
+$0.70$, giving a Brier skill score of $-0.016$. The stated probabilities are,
+if anything, slightly worse than knowing how often the market went up.
+
+\paragraph{Power.} These figures overstate the evidence. The assets move in
+correlated blocks --- two equity funds share roughly $70\%$ of their exposure,
+two precious-metal instruments track the same underlying --- so the effective
+number of independent observations per day is roughly three, not the nominal
+count. With 38 days, no forecasting conclusion here should be read as more
+than ``not demonstrated''.
+
+\section{Operational failure telemetry}\label{sec:errors}
+
+Every operational mistake is logged with a controlled vocabulary: error class
+(8 values), the mechanism that caught it (10 values), the detecting party
+(agent or human), the direction of the resulting correction, and the number of
+days between the event and its detection.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{lr}
+\toprule
+records & 97 \\
+detected by agent / human & 77 / 20 \quad (agent share $0.794$) \\
+detection latency: median / mean / max & 1 / 9.1 / 400 days \\
+latency $p_{75}$ / $p_{90}$ / $p_{95}$ & 7 / 17 / 30 days \\
+latency $\geq 7$ days & 25/97 \\
+latency $\geq 30$ days & 6/97 \\
+repeat of an earlier record & 37/97 $= 0.381$ \; CI95 $(0.291,\,0.481)$ \\
+\bottomrule
+\end{tabular}
+\caption{Error log summary. Latency is heavily right-skewed: most errors are
+caught within a day, a minority survive for months.}
+\label{tab:errors}
+\end{table}
+
+\paragraph{Two features stand out.} First, latency is not merely skewed but
+bimodal in character: the median is one day while the mean is nine and the
+maximum is 400. Routine cross-checking catches errors of value almost
+immediately; a different kind of error survives it entirely. Second, more than
+a third of records ($38.1\%$) are repeats of an earlier record --- the agent
+returns to failure classes it has already documented.
+
+\paragraph{Self-correction appears directionally unbiased.} Of the records
+whose effect on the ledger's own scores was classified, 9 were favourable to
+the agent and 10 unfavourable (two-sided exact $p = 1.0$; favourable share
+$0.474$, CI95 $0.273$--$0.683$). This is the one result here where a
+\emph{significant} finding would have been bad news: a systematic skew toward
+self-favouring corrections would indicate that corrections are chosen after
+seeing which way they cut. No such skew is detected, though the test is
+underpowered.
+
+\section{Rules are not mechanisms}\label{sec:mechanism}
+
+The recurring pattern behind the long-latency tail is specific enough to name.
+Repeatedly, the agent diagnosed a real problem correctly, wrote the correct
+rule into its own documentation, and then failed to apply it --- because a
+document is not an enforcement point. Four instances were identified in the
+released log:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{llr p{5.6cm}}
+\toprule
+Record & Class & Latency & The rule that existed but was not enforced \\
+\midrule
+K93 & process     & 400 d & ``Index values must be cross-checked against the
+previous close.'' Written after a $5\%$ index mis-read; no code ever checked. \\
+K91 & process     & 18 d  & Three rules --- shadow intervals, an adversarial
+pre-commit review, and a second ledger's snapshot --- all documented, none in
+the daily runner. \\
+K80 & measurement & 0 d   & Market-state fields silently disappeared between
+days; only 7 of 80+ fields were validated. \\
+K87 & measurement & 1 d   & A prior diagnosis of a data-provider anomaly was
+itself wrong; the behavioural rule survived, its stated cause did not. \\
+\bottomrule
+\end{tabular}
+\caption{Instances of the pattern. In each case the knowledge existed and was
+written down; what was missing was an automatic check.}
+\label{tab:mechanism}
+\end{table}
+
+The cost is measurable. In one case a documented interval-recording rule was
+followed on the day it was written, ignored for the next three days, and
+resumed only when someone remembered it; those three days are permanently
+absent from the hypothesis pool they were meant to fill, because the quantity
+cannot be reconstructed after the fact.
+
+\paragraph{Why this should generalise.} The pattern does not depend on the
+particular agent or task. It depends on a structural asymmetry: an agent that
+writes its own operating documentation is also the reader of that
+documentation, and reading is not enforced. Every rule that survives only as
+prose is a rule contingent on the agent remembering it at the moment it
+applies --- which is precisely the moment the agent is distracted by the task
+that caused the rule to be written.
+
+\paragraph{A failed exploratory test.} We expected errors of \emph{absence}
+(a missing field, an unenforced rule) to hide longer than errors of
+\emph{wrong value}, since a wrong number can be cross-checked and a missing
+one cannot. Classifying by error class, absence-like records
+($n = 36$) have median latency $1.0$ days and mean $18.6$; the remainder
+($n = 61$) have median $1.0$ and mean $3.4$. A Mann--Whitney test gives
+$z = -1.60$, two-sided $p = 0.11$: \textbf{not supported}. The difference lives
+entirely in the tail, driven by a single 400-day observation. We report this
+because it was run, and because the hypothesis was formed \emph{after} looking
+at the data; it is registered for prospective testing rather than claimed.
+
+\section{Limitations}\label{sec:limits}
+
+\paragraph{The log is self-reported.} It is written by the same agent that
+made the errors. Errors the agent never noticed are absent by construction,
+and no amount of internal analysis can recover them. The 20 human-detected
+records give a hint of the miss rate but not an estimate: we do not record
+whether the agent \emph{would} have caught what the human caught, so the two
+detectors cannot be compared.
+
+\paragraph{A design that would fix this.} Capture--recapture, standard in
+epidemiology and software defect estimation, requires only that overlap be
+recorded: for each error, whether each detector found it independently. With
+overlap, the unobserved population becomes estimable rather than merely
+acknowledged. We have added the field prospectively; it carries no data yet.
+
+\paragraph{Single agent, single task, small $n$.} One agent, one task, one
+supervisor, 38 days. Nothing here establishes a rate that transfers to other
+agents. The dataset's value is that it exists and is open, not that it is
+representative.
+
+\paragraph{Classification is partly retrospective.} The controlled vocabulary
+was introduced after 75 records had accumulated; those records were mapped to
+it \emph{after} the data was visible. The released log therefore distinguishes
+an exploratory pool from a confirmatory pool beginning at the record where the
+vocabulary was fixed. Tests intended as evidence use the confirmatory pool
+only, which currently holds 20 records.
+
+\section{Data availability}
+
+All data, documentation and analysis code are released under CC~BY~4.0 (data
+and documentation) and MIT (code):
+
+\begin{center}
+\href{https://doi.org/10.5281/zenodo.22643370}{\texttt{doi:10.5281/zenodo.22643370}}
+\quad
+\href{https://github.com/farukciftler/forecast-discipline-ledger}{\texttt{github.com/farukciftler/forecast-discipline-ledger}}
+\end{center}
+
+The repository contains the pre-registration, methods, codebook, case
+descriptions, and a dependency-free script that regenerates every number in
+this paper from the released CSVs. Every figure and table above is produced by
+\texttt{paper/compute\_numbers.py}.
+
+The exporter that produces the anonymised release and the independent auditor
+that verifies it are deliberately \emph{not} published: the exporter carries
+the alias mapping and the auditor carries the forbidden-term list, so
+publishing either would defeat the anonymisation.
+
+\paragraph{What is withheld.} Amounts, balances, unit counts, price levels,
+institution, instrument, vendor and person names, and free text. Assets appear
+as \texttt{A1}--\texttt{A7}, the forecasting models as \modelA{} and \modelB{},
+and country-specific market variables under role labels; global public
+benchmarks keep their usual names. The accepted residual risk is that a fund's
+return series could in principle be matched against public NAV series and the
+instrument identified, which reveals nothing about any person.
+
+\section{Conclusion}
+
+An agent ran a real measurement system for 38 days and produced forecasts with
+no demonstrated skill. That is the uninteresting half of the result, and it was
+pre-registered so that it could not be quietly reframed.
+
+The interesting half is what the process recorded about itself. Errors are
+caught quickly on average and occasionally not at all for over a year; more
+than a third recur; and the corrections the agent applies to its own records
+show no detectable self-serving bias. The dominant long-latency failure is not
+a wrong answer but an unenforced rule --- knowledge that the agent possessed,
+documented, and did not act on.
+
+If agents are going to maintain systems, the useful question is not only how
+often they are right. It is how their being wrong becomes visible, how long
+that takes, and whether writing the lesson down is enough. On the evidence
+here, it is not.
+
+\end{document}
