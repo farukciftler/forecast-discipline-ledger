@@ -25,7 +25,23 @@ BUILTIN = re.compile(
     r"geq|leq|times|cdot|,|;|%|&|\\|_|\$|#|{|}|multicolumn|hline|noindent|"
     r"today|hspace|vspace|par|left|right|frac|mathrm|text|url|and|approx|"
     r"S|P|captionsetup|hidelinks|utf|T|a|newline|linewidth|textwidth|"
+    r"rho|sum|sigma|mu|alpha|beta|delta|pm|neq|infty|log|exp|min|max|"
     r"modelA|modelB|em|it|bf|sl|tt|rm|sf|footnotesize|scriptsize|large|Large)$")
+
+
+# Literals that are legitimately not data. Each needs a reason.
+ALLOWED_LITERALS = {
+    "0.80",   # the interval's nominal target, fixed by the protocol
+    "0.5",    # the null of the one-sided sign test
+    "95",     # "Wilson 95% CI" -- a convention, not a measurement
+    "80",     # "80% intervals" in prose
+    "10",     # exponent in "$10^{-8}$"-style prose, and "10 values"
+    "1.0",    # the null probability quoted as a bound
+    "75", "90",   # subscripts in "$p_{75}$ / $p_{90}$ / $p_{95}$" -- labels
+    "30",     # the ">= 30 days" threshold, a definition not a measurement
+    "4.0",    # "CC BY 4.0"
+    "10.5281",  # the DOI prefix
+}
 
 
 def fail(msg):
@@ -47,6 +63,27 @@ def main():
     if missing:
         fail("undefined macros in main.tex: " + ", ".join(missing))
     print(f"ok: {len(used & defined)} generated macros used, all defined")
+
+    # A hand-typed figure need not be an undefined macro -- it can simply be a
+    # bare literal, which the macro check cannot see. This was a real gap: the
+    # table in section 5 carried "400 d" as plain text and passed. We now flag
+    # decimal literals and multi-digit integers outside the preamble, table
+    # rules and section numbering, and require each to be justified.
+    body = main_tex.split("\\begin{document}", 1)[-1]
+    body = re.sub(r"%.*", "", body)                       # comments
+    body = re.sub(r"\\(?:label|ref|input|usepackage|documentclass)\{[^}]*\}", "", body)
+    lits = set()
+    for m in re.finditer(r"(?<![\\\w.])(\d+\.\d+|\d{2,})(?![\w.])", body):
+        v = m.group(1)
+        if v in ALLOWED_LITERALS:
+            continue
+        lits.add(v)
+    if lits:
+        fail("bare numeric literals in the body -- generate them instead: "
+             + ", ".join(sorted(lits))
+             + "\n      (if a literal is genuinely not data, add it to "
+               "ALLOWED_LITERALS with a reason)")
+    print("ok: no bare numeric literals in the body")
 
     unused = sorted(defined - used - {"modelA", "modelB"})
     if unused:

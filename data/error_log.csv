@@ -3,7 +3,7 @@ K1,2026-08-01,2026-08-01,0,agent,no,,model,cross_check,
 K2,2026-08-01,2026-08-01,0,agent,no,,measurement,reasoning,
 K3,2026-08-01,2026-08-01,0,agent,no,,measurement,reasoning,
 K4,2026-08-01,2026-08-01,0,agent,no,,measurement,reasoning,
-K5,2026-08-02,2026-08-02,1,agent,no,,engine,engine_warning,
+K5,2026-08-02,2026-08-02,0,agent,no,,engine,engine_warning,
 K6,2026-08-02,2026-08-01,1,human,no,,institution,human,
 K7,2026-08-03,2026-08-01,2,agent,no,,data,cross_check,
 K8,2026-08-03,2026-08-03,0,human,no,,accounting,human,
@@ -49,7 +49,7 @@ K47,2026-08-17,2026-08-16,1,human,no,,accounting,human,
 K48,2026-08-17,2026-08-10,7,agent,no,,accounting,reconciliation,
 K49,2026-08-18,2026-08-18,0,agent,no,,engine,routine_flow,
 K50,2026-08-19,2026-08-14,5,agent,yes,K9,model,routine_flow,unfavorable
-K51,2026-08-20,2026-08-19,0,agent,no,,model,routine_flow,unfavorable
+K51,2026-08-20,2026-08-19,1,agent,no,,model,routine_flow,unfavorable
 K52,2026-08-20,2026-08-20,0,agent,yes,K49,engine,routine_flow,
 K53,2026-08-21,2026-08-21,0,agent,yes,K49,engine,routine_flow,neutral
 K54,2026-08-22,2026-08-15,7,agent,no,,measurement,routine_flow,neutral
@@ -92,7 +92,8 @@ K89,2026-09-07,2026-09-07,0,agent,no,,institution,custodian_statement,neutral
 K90,2026-09-07,2026-09-07,0,agent,no,K29,verification,preregistered_test,favorable
 K91,2026-09-07,2026-08-20,18,human,yes,K53,process,routine_flow,neutral
 K92,2026-09-07,2026-08-01,37,human,no,,measurement,human,neutral
-K93,2026-09-07,2026-08-03,400,agent,yes,K53,process,routine_flow,neutral
+K93,2026-09-07,2026-08-03,35,agent,yes,K53,process,routine_flow,neutral
 K94,2026-09-07,2026-09-07,0,agent,yes,K91,process,routine_flow,neutral
 K95,2026-09-07,2026-08-01,37,human,no,,engine,routine_flow,neutral
 K96,2026-09-07,2026-09-07,0,human,no,K95,process,routine_flow,neutral
+K97,2026-09-07,2026-09-07,0,human,yes,K93,data,adversarial_review,unfavorable

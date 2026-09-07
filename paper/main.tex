@@ -54,13 +54,15 @@ $0.80$ target, exact binomial $p = \CovP$); and the up-move probability scores
 slightly worse than the sample base rate (Brier skill score $\BSS$).
 
 The error log is the more unusual object. Across \ErrN{} records, detection latency
-is heavily right-skewed --- median \LatMedian{} day, mean \LatMean, maximum
-\LatMax{} --- and $\RepK/\ErrN = \RepRate$ of records are repeats of an
+is right-skewed --- median \LatMedian{} day, mean \LatMean, maximum
+\LatMax{} days --- and $\RepK/\ErrN = \RepRate$ of records are repeats of an
 earlier one. We name and
 illustrate a recurring failure mode of agent-maintained systems: the agent
 writes a correct rule into its own documentation and then does not follow it,
-because \emph{documentation is not a mechanism}. Four instances were identified,
-one of which persisted for 400 days. Finally, we state the limitation that
+because \emph{documentation is not a mechanism}. Two clear instances and two
+adjacent ones are described; the clearest went unenforced for \LatMax{} days.
+During the audit of this manuscript the pattern recurred once more, inside the
+error log itself, and we report that instance too. Finally, we state the limitation that
 governs all of this: the log is written by the same agent that made the errors,
 so errors it never noticed are absent by construction. We propose a
 capture--recapture design that would make the unobserved population estimable.
@@ -181,10 +183,11 @@ rate of $\BaseRate$, giving a Brier skill score of $\BSS$. The stated probabilit
 if anything, slightly worse than knowing how often the market went up.
 
 \paragraph{Power.} These figures overstate the evidence. The assets move in
-correlated blocks --- two equity funds share roughly $70\%$ of their exposure,
-two precious-metal instruments track the same underlying --- so the effective
-number of independent observations per day is roughly three, not the nominal
-count. With \NumDays{} days, no forecasting conclusion here should be read as more
+correlated blocks: the two foreign-equity funds have a daily return
+correlation of $\CorrAtwoAthree$, and two precious-metal instruments track the
+same underlying. A Kish-style effective count,
+$k^{2}/\sum_{ij}\rho_{ij}$, gives $\NEff$ effectively independent series per
+day rather than the nominal \NumAssets. With \NumDays{} days, no forecasting conclusion here should be read as more
 than ``not demonstrated''.
 
 \section{Operational failure telemetry}\label{sec:errors}
@@ -213,12 +216,15 @@ caught within a day, a minority survive for months.}
 \label{tab:errors}
 \end{table}
 
-\paragraph{Two features stand out.} First, latency is not merely skewed but
-bimodal in character: the median is \LatMedian{} day while the mean is
-\LatMean{} and the maximum is \LatMax. Routine cross-checking catches errors of value almost
-immediately; a different kind of error survives it entirely. Second, more than
-a third of records ($\RepRate$) are repeats of an earlier record --- the agent
-returns to failure classes it has already documented.
+\paragraph{Two features stand out.} First, latency is skewed: the median is
+\LatMedian{} day while the mean is \LatMean{} and the maximum is \LatMax{}
+days. Routine cross-checking catches most errors within a day; a minority
+survive it for weeks. We stress that the ledger is only \NumDays{} days old,
+so the tail is bounded by the observation window --- the maximum is not an
+estimate of how long an error \emph{can} hide, only of how long one did within
+a short window. Second, more than a third of records ($\RepRate$) are repeats
+of an earlier record --- the agent returns to failure classes it has already
+documented.
 
 \paragraph{Self-correction appears directionally unbiased.} Of the records
 whose effect on the ledger's own scores was classified, \EffFav{} were
@@ -231,32 +237,41 @@ underpowered.
 
 \section{Rules are not mechanisms}\label{sec:mechanism}
 
-The recurring pattern behind the long-latency tail is specific enough to name.
-Repeatedly, the agent diagnosed a real problem correctly, wrote the correct
-rule into its own documentation, and then failed to apply it --- because a
-document is not an enforcement point. Four instances were identified in the
-released log:
+One recurring pattern is specific enough to name. Repeatedly, the agent
+diagnosed a real problem correctly, wrote the correct rule into its own
+documentation, and then failed to apply it --- because a document is not an
+enforcement point.
+
+We are deliberate about the count. \textbf{Two} records are clear instances: a
+documented rule existed, no code enforced it, and the omission had a cost.
+\textbf{Two} further records are adjacent but weaker --- one is a missing
+validation rather than an unfollowed rule, one is a wrong causal diagnosis that
+was corrected. We list all four and mark which is which, rather than reporting
+``four instances'' of a category stretched to fit.
 
 \begin{table}[h]
 \centering
 \small
 \begin{tabular}{llr p{5.6cm}}
 \toprule
-Record & Class & Latency & The rule that existed but was not enforced \\
+Record & Fit & Latency & The rule that existed but was not enforced \\
 \midrule
-K93 & process     & 400 d & ``Index values must be cross-checked against the
-previous close.'' Written after a $5\%$ index mis-read; no code ever checked. \\
-K91 & process     & 18 d  & Three rules --- shadow intervals, an adversarial
+\textbf{K93} & clear & \LatMax{} d & ``Index values must be cross-checked
+against the previous close.'' Written after a $5\%$ index mis-read; no code
+ever checked. \\
+\textbf{K91} & clear & \KNineOneLat{} d & Three rules --- shadow intervals, an adversarial
 pre-commit review, and a second ledger's snapshot --- all documented, none in
 the daily runner. \\
-K80 & measurement & 0 d   & Market-state fields silently disappeared between
-days; only 7 of 80+ fields were validated. \\
-K87 & measurement & 1 d   & A prior diagnosis of a data-provider anomaly was
-itself wrong; the behavioural rule survived, its stated cause did not. \\
+K80 & adjacent & 0 d & Market-state fields silently disappeared between days.
+A missing validation, not an unfollowed rule. \\
+K87 & adjacent & 1 d & A prior diagnosis of a provider anomaly was itself wrong.
+The behavioural rule survived; its stated cause did not. Included because it
+shows a documented \emph{explanation} can be wrong while the \emph{rule} it
+justifies stays useful. \\
 \bottomrule
 \end{tabular}
-\caption{Instances of the pattern. In each case the knowledge existed and was
-written down; what was missing was an automatic check.}
+\caption{Instances of the pattern, with an explicit judgement of fit. Two are
+clear, two are adjacent and reported as such.}
 \label{tab:mechanism}
 \end{table}
 
@@ -300,16 +315,48 @@ recorded: for each error, whether each detector found it independently. With
 overlap, the unobserved population becomes estimable rather than merely
 acknowledged. We have added the field prospectively; it carries no data yet.
 
+\paragraph{The pattern recurred during this audit, in the log itself.}
+While auditing this manuscript we recomputed every latency value from the two
+dates that define it. Three of \ErrN{} disagreed with the stored figure. Two
+were off by a day. One, the record used above as the clearest example of the
+pattern, stored \emph{four hundred} days where the arithmetic gives
+\LatMax. The value had been entered by hand; the field is derivable; no check
+existed. A four-hundred-day latency was impossible on its face, since the
+ledger is \NumDays{} days old, and that impossibility went unnoticed --- by the
+agent that wrote it and by the human who reviewed the release.
+
+The rule was already written. The project's own operating document states that
+latency equals the logged date minus the event date. It was written down, it
+was correct, and it was not enforced, so a derivable field was typed by hand
+and never checked. The manuscript's most striking figure was itself a product
+of the failure mode the manuscript describes.
+
+The error reached the published dataset, this paper's abstract, and three
+archived releases before it was caught. Those archives cannot be edited; the
+correction is stated here and in the revision notes rather than made silently.
+The check now exists and fails the daily run if any latency disagrees with its
+dates. We report the episode because a paper about unenforced rules that
+quietly fixed its own would be worth less than one that does not.
+
+\paragraph{Self-categorisation, not just self-report.} The limitation above is
+usually stated as ``the log is self-reported''. It is worse than that. The
+agent also chose the error classes, designed the controlled vocabulary those
+classes belong to, and decided which records count as instances of the pattern
+in \S\ref{sec:mechanism}. Section~\ref{sec:mechanism} marks two of four
+instances as merely adjacent for this reason, but the marking is itself the
+agent's judgement. An independent re-classification of the released log would
+be a useful contribution and we have not done one.
+
 \paragraph{Single agent, single task, small $n$.} One agent, one task, one supervisor, \NumDays{} days. Nothing here establishes a rate that transfers to other
 agents. The dataset's value is that it exists and is open, not that it is
 representative.
 
 \paragraph{Classification is partly retrospective.} The controlled vocabulary
-was introduced after 75 records had accumulated; those records were mapped to
+was introduced after \VocabFreezeN{} records had accumulated; those were mapped to
 it \emph{after} the data was visible. The released log therefore distinguishes
 an exploratory pool from a confirmatory pool beginning at the record where the
 vocabulary was fixed. Tests intended as evidence use the confirmatory pool
-only, which currently holds 20 records.%
+only, which currently holds \ConfirmN{} records.%
 \footnote{This count is not yet generated; it is fixed by the record at which
 the vocabulary was frozen and moves only as new records accrue.}
 

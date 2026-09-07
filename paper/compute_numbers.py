@@ -212,6 +212,52 @@ def main():
     print(f"  Mann-Whitney U = {U:.0f}  z = {z:.2f}  two-sided p = {p:.4f}")
     print("  EXPLORATORY and NOT SUPPORTED. Reported because it was run.")
 
+    h("S5b  Figures quoted in the mechanism section")
+    def rid(r):
+        try:
+            return int(r["record_id"].lstrip("Kk"))
+        except ValueError:
+            return None
+    k91 = next((r for r in E if r["record_id"] == "K91"), None)
+    if k91:
+        print(f"  K91 latency            = {reg('KNineOneLat', k91['latency_days'])}")
+    FREEZE = 78   # the record at which the controlled vocabulary was fixed
+    conf = [r for r in E if (rid(r) or 0) >= FREEZE]
+    print(f"  confirmatory pool (K{FREEZE}+) = {reg('ConfirmN', len(conf))}")
+    print(f"  records before freeze  = {reg('VocabFreezeN', len(E) - len(conf))}")
+    # The two foreign-equity funds: correlation is derivable from returns.csv,
+    # unlike the look-through overlap, which is not published.
+    import collections
+    ret = collections.defaultdict(dict)
+    for r in load("returns.csv"):
+        v = num(r["return_pct"])
+        if v is not None:
+            ret[r["date"]][r["asset_id"]] = v
+    def rho(a, b):
+        d = sorted(set(k for k, v in ret.items() if a in v and b in v))
+        if len(d) < 5:
+            return None
+        x = [ret[k][a] for k in d]; y = [ret[k][b] for k in d]
+        mx, my = st.fmean(x), st.fmean(y)
+        den = math.sqrt(sum((p - mx) ** 2 for p in x) * sum((q - my) ** 2 for q in y))
+        return sum((p - mx) * (q - my) for p, q in zip(x, y)) / den if den else None
+    r23 = rho("A2", "A3")
+    if r23:
+        print(f"  corr(A2, A3)           = {reg('CorrAtwoAthree', r23, '{:.2f}')}")
+    # effective independent observations, Kish-style: k^2 / sum(rho_ij)
+    ids = sorted({a for v in ret.values() for a in v}
+                 & {a for a in {x for v in ret.values() for x in v}
+                    if sum(1 for v in ret.values() if a in v) >= 15})
+    tot = 0.0
+    for i in ids:
+        for j in ids:
+            c = 1.0 if i == j else rho(i, j)
+            if c is not None:
+                tot += c
+    if tot:
+        print(f"  n_eff (k={len(ids)}, rho sum {tot:.2f}) = "
+              f"{reg('NEff', len(ids) ** 2 / tot, '{:.1f}')}")
+
     h("S6  Longest-hidden records")
     for r in sorted(E, key=lambda r: -int(r["latency_days"] or 0))[:6]:
         print(f"  {r['record_id']:5s} {r['latency_days']:>4s}d  {r['detected_by']:6s} "

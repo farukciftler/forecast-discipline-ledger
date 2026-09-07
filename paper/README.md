@@ -5,6 +5,7 @@ Manuscript for the dataset in this repository.
 | file | what it is |
 |---|---|
 | `main.tex` | the manuscript — **contains no hand-typed data numbers** |
+| `ALLOWED_LITERALS` in `check_paper.py` | the short list of numbers that are legitimately not data |
 | `numbers.tex` | **generated**; `\newcommand` for every quoted figure |
 | `compute_numbers.py` | recomputes all of them from `../data/*.csv` |
 | `check_paper.py` | guard: fails if a number was typed by hand or has gone stale |
@@ -37,11 +38,16 @@ python3 paper/check_paper.py               # verify before committing
 
 `check_paper.py` fails on two things, and both are tested to actually fire:
 
-1. **An undefined macro in `main.tex`** — catches a number typed by hand, since
-   any hand-typed figure would either be a bare literal (caught in review) or a
-   macro that does not exist.
-2. **A stale `numbers.tex`** — it regenerates into a temporary file and
+1. **An undefined macro in `main.tex`.**
+2. **A bare numeric literal in the body.** The first check alone was not
+   enough, and this is not hypothetical: the section-5 table carried
+   `400 d` and `18 d` as plain text and passed. Literals must either be
+   generated or added to `ALLOWED_LITERALS` **with a reason** (the DOI prefix,
+   `CC BY 4.0`, subscript labels, and threshold definitions are there).
+3. **A stale `numbers.tex`** — it regenerates into a temporary file and
    byte-compares. If the data moved and nobody re-ran the generator, this fails.
+
+All three were tested by deliberately breaking them.
 
 ### CI
 
