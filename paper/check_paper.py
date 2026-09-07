@@ -48,6 +48,38 @@ ALLOWED_LITERALS = {
 }
 
 
+# --- Prose tells -------------------------------------------------------------
+# A paper whose thesis is "a rule that lives only in prose is contingent on
+# someone remembering it" should not rely on remembering how to write. These
+# are the machine-generated-prose markers that were actually present in the
+# first draft, plus the standard vocabulary tells. The em-dash count is the
+# load-bearing one: the draft had seventeen, roughly one per paragraph.
+PROSE_TELLS = [
+    (r"---", "em-dash: seventeen were removed from the first draft; use a "
+             "comma, colon, semicolon, or two sentences"),
+    (r"\b(?:comprehensive|robust|leverage|delve|nuanced|multifaceted|holistic"
+     r"|underscore[sd]?|pivotal|realm|landscape|tapestry|paradigm|myriad"
+     r"|seamless|cutting-edge|game-chang\w+)\b", "machine-generated vocabulary"),
+    (r"\bIt is worth noting\b|\bIt should be noted\b|\bImportantly,",
+     "filler opener"),
+    (r"\b(?:Moreover|Furthermore|Additionally),", "connective filler; let the "
+     "idea carry the transition"),
+    (r"\bnot only .{2,60}? but also\b", "not-only-but-also construction"),
+    (r"\bIn conclusion\b|\bIn summary\b", "generic closer"),
+    (r"\bover a (?:year|decade)\b", "unverified time-span claim; every "
+     "duration in this paper must come from a macro"),
+]
+
+
+def check_prose(body):
+    hits = []
+    for pat, why in PROSE_TELLS:
+        found = set(m.group(0) for m in re.finditer(pat, body))
+        if found:
+            hits.append(f"{why}: {', '.join(sorted(found)[:4])}")
+    return hits
+
+
 def fail(msg):
     print("FAIL: " + msg, file=sys.stderr)
     sys.exit(1)
@@ -88,6 +120,12 @@ def main():
              + "\n      (if a literal is genuinely not data, add it to "
                "ALLOWED_LITERALS with a reason)")
     print("ok: no bare numeric literals in the body")
+
+    tells = check_prose(body)
+    if tells:
+        fail("prose reads as machine-generated:\n      "
+             + "\n      ".join(tells))
+    print("ok: no machine-generated prose tells")
 
     unused = sorted(defined - used - {"modelA", "modelB"})
     if unused:

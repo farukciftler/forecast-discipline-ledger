@@ -9,7 +9,7 @@ Manuscript for the dataset in this repository.
 | `numbers.tex` | **generated**; `\newcommand` for every quoted figure |
 | `compute_numbers.py` | recomputes all of them from `../data/*.csv` |
 | `check_paper.py` | guard: fails if a number was typed by hand or has gone stale |
-| `refs.bib` | bibliography — **every entry verified against the publisher record** |
+| `refs.bib` | bibliography, **every entry verified against the publisher record** |
 
 ## The workflow
 
@@ -45,10 +45,20 @@ python3 paper/check_paper.py               # verify before committing
    `400 d` and `18 d` as plain text and passed. Literals must either be
    generated or added to `ALLOWED_LITERALS` **with a reason** (the DOI prefix,
    `CC BY 4.0`, subscript labels, and threshold definitions are there).
-3. **A stale `numbers.tex`** — it regenerates into a temporary file and
+3. **A stale `numbers.tex`**: it regenerates into a temporary file and
    byte-compares. If the data moved and nobody re-ran the generator, this fails.
+4. **Machine-generated prose tells.** Em-dashes, the standard vocabulary
+   (`comprehensive`, `robust`, `leverage`, `nuanced`, …), filler openers,
+   connective filler, not-only-but-also, generic closers, and unverified
+   time-span phrases such as "over a year".
 
-All three were tested by deliberately breaking them.
+All four were tested by deliberately breaking them.
+
+The fourth check is not cosmetic. The first draft carried seventeen em-dashes,
+about one per paragraph, and the phrase "occasionally not at all for over a
+year" survived in the conclusion after the 400-day error had been corrected
+everywhere else. A prose habit hid a factual error, which is the same failure
+this paper documents in its data.
 
 ### CI
 
