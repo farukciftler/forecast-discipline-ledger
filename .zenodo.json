@@ -1,0 +1,32 @@
+{
+  "title": "Forecast Discipline Ledger: a longitudinal record of agent forecasts and operational errors",
+  "upload_type": "dataset",
+  "license": "cc-by-4.0",
+  "access_right": "open",
+  "version": "v0.1.3",
+  "language": "eng",
+  "creators": [
+    {
+      "name": "Ciftler, Abdullah Faruk",
+      "orcid": "0009-0001-9310-3812"
+    }
+  ],
+  "description": "<p>Two linked datasets produced by a single language-model agent running a daily forecasting process over six financial assets for 38 days, under human supervision.</p><p><strong>1. A forecast calibration ledger.</strong> Each trading day the agent writes a point forecast, an 80% interval and a probability of an up-move, for each asset at 1-day, 1-week and 1-month horizons, before the outcome is known. Forecasts are sealed, then scored automatically against the realized value and against three baselines (naive, drift, momentum).</p><p><strong>2. An agent error log.</strong> Every operational mistake is recorded with structured fields: error class, which mechanism caught it, who caught it (agent or human), and how many days it stayed hidden. Agent evaluation is normally episodic; this is longitudinal operational failure telemetry from a single continuing task with real consequences and a human in the loop.</p><p><strong>Headline results are negative and were pre-registered.</strong> Beating all three baselines simultaneously fails (118/352 = 0.335, one-sided p = 1.0). Interval coverage is too wide (0.869 against an 0.80 target, p = 0.0004). The up-move probability loses to the running base rate. Effective independent observations are roughly 3 per day, not 6, because the assets are correlated in blocks.</p><p><strong>Error log summary.</strong> 97 records; 77 caught by the agent and 20 by the human; detection latency median 1 day, mean 9.1, max 400; 38.1% are repeats of an earlier record. Known limitation: the log is written by the same agent that made the errors, so errors it never noticed are invisible.</p><p><strong>Anonymization.</strong> No amounts, balances, unit counts, price levels, institution, instrument, vendor or person names, free text, or non-English text. Assets appear as A1-A7, models as model_A / model_B, and country-specific market variables use role labels; global public benchmarks keep their usual names. Accepted residual risk: a fund's return series could in principle be matched against public NAV series and the instrument identified, which reveals nothing about any person.</p><p><code>analysis/reproduce.py</code> regenerates every reported number from the CSVs using the standard library only.</p>",
+  "keywords": [
+    "forecast calibration",
+    "pre-registration",
+    "language model agents",
+    "agent reliability",
+    "operational error telemetry",
+    "negative results",
+    "prediction intervals",
+    "Brier score"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/farukciftler/forecast-discipline-ledger",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ]
+}

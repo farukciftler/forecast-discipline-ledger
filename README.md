@@ -144,7 +144,7 @@ context verifiable. Dates alone identify no one.
 
 ## Author
 
-Abdullah Faruk Ciftler — [@farukciftler](https://github.com/farukciftler)
+Abdullah Faruk Ciftler — [@farukciftler](https://github.com/farukciftler) · ORCID [0009-0001-9310-3812](https://orcid.org/0009-0001-9310-3812)
 
 The ledger is maintained by a language-model agent under human supervision;
 the agent writes the forecasts and the error records, the human reviews them,
