@@ -19,7 +19,7 @@ keywords:
   - operational error telemetry
   - negative results
 license: CC-BY-4.0
-version: "0.1.3"
+version: "0.2.0"
 date-released: "2026-09-07"
 authors:
   - family-names: "Ciftler"
