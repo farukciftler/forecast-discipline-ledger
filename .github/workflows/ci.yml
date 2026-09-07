@@ -114,14 +114,43 @@ jobs:
           fi
           echo "ok: bibliography and cross-references resolved"
 
+      - name: Assemble the arXiv submission package
+        # arXiv compiles the LaTeX source itself but does NOT run bibtex, so
+        # main.bbl has to travel with the source or the references come out
+        # empty on their servers. It also rejects .aux/.log/.out. Building the
+        # package here means nobody has to remember any of that.
+        run: |
+          cd paper
+          mkdir -p ../arxiv
+          cp main.tex numbers.tex refs.bib main.bbl ../arxiv/
+          cd ../arxiv
+          tar czf ../arxiv-submission.tar.gz .
+          cd ..
+          echo "package contents:"; tar tzf arxiv-submission.tar.gz | sed 's/^/  /'
+          for f in main.tex numbers.tex refs.bib main.bbl; do
+            tar tzf arxiv-submission.tar.gz | grep -q "$f" || {
+              echo "::error::$f missing from the submission package"; exit 1; }
+          done
+          tar tzf arxiv-submission.tar.gz | grep -E '\.(aux|log|out|synctex)' && {
+            echo "::error::build artefacts leaked into the package"; exit 1; } || true
+          echo "ok: submission package complete"
+
       - uses: actions/upload-artifact@v4
         with:
           name: manuscript
           path: paper/main.pdf
           if-no-files-found: error
 
-      - name: Attach PDF to the release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arxiv-submission
+          path: arxiv-submission.tar.gz
+          if-no-files-found: error
+
+      - name: Attach the PDF and submission package to the release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
-          files: paper/main.pdf
+          files: |
+            paper/main.pdf
+            arxiv-submission.tar.gz
