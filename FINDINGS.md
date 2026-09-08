@@ -1,6 +1,6 @@
 # Findings to date
 
-**Sample:** 39 calendar days · 405 scored forecasts · 101 error records ·
+**Sample:** 39 calendar days · 405 scored forecasts · 102 error records ·
 7 assets · one volatility regime.
 
 Every number below is printed by `analysis/reproduce.py` from `data/` alone.
@@ -145,24 +145,24 @@ Detecting a genuine 52% edge would need ~3,900 independent observations
 
 | | value |
 |---|---|
-| records | 101 in 39 days (≈2.6/day) |
-| detection latency | median **1 day**, mean 5.6, max 37 |
-| detected by agent / human | **80 / 21** |
-| repeats of a prior record | **40/101 = 39.6%** [30.6–49.4] |
+| records | 102 in 39 days (≈2.6/day) |
+| detection latency | median **1 day**, mean 5.8, max 37 |
+| detected by agent / human | **80 / 22** |
+| repeats of a prior record | **41/102 = 40.2%** [31.2–49.9] |
 
 Classes: measurement 30, model 14, data 14, engine 11, verification 11,
-process 9, institution 8, accounting 4.
+process 10, institution 8, accounting 4.
 
-Detection mechanisms: routine flow 30, cross-check 18, reasoning 14, human 11,
+Detection mechanisms: routine flow 30, cross-check 18, reasoning 14, human 12,
 custodian statement 8, next-day observation 6, pre-registered test 5, engine
 warning 4, adversarial review 3, reconciliation 2.
 
-The mean latency (5.6 days) is five times the median (1 day). Most errors are
+The mean latency (5.8 days) is nearly six times the median (1 day). Most errors are
 caught the next morning; a long tail is not caught for weeks, and that tail is
 where the interesting records are.
 
 **H9 has its first reading.** Of the corrections with a recorded direction:
-favorable 9, unfavorable 11, neutral 30 (n=50). A significant skew toward
+favorable 9, unfavorable 11, neutral 31 (n=51). A significant skew toward
 *favorable* would be bad news, since it would mean corrections get chosen
 after seeing which way they cut. No skew is detected, which is the outcome the
 test was designed to be able to refuse.
@@ -174,12 +174,12 @@ and it measures a question that is answerable on a much shorter timescale.
 Pre-registered hypotheses H7–H9 need ~120 records — roughly two more months,
 not the ~6 years the forecasting question needs.
 
-**The 39.6% repeat rate is the most decision-relevant number in the dataset**
+**The 40.2% repeat rate is the most decision-relevant number in the dataset**
 for anyone building agent memory: it asks whether writing a failure down
 prevents its recurrence. It currently has nothing to be compared against —
 there is no control arm (README, *Limitations*).
 
-**The repeat rate rose from 28.8% to 39.6% as the log grew.** Writing a
+**The repeat rate rose from 28.8% to 40.2% as the log grew.** Writing a
 failure down is doing less to prevent its recurrence than the first release
 suggested. There is still nothing to compare it against.
 

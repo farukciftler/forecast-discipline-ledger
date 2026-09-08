@@ -75,7 +75,7 @@ an earlier one. We name and
 illustrate a recurring failure mode of agent-maintained systems: the agent
 writes a correct rule into its own documentation and then does not follow it,
 because \emph{documentation is not a mechanism}. Two clear instances and two
-adjacent ones are described; the clearest went unenforced for \LatMax{} days.
+adjacent ones are described; the clearest went unenforced for \KNineThreeLat{} days.
 During the audit of this manuscript the pattern recurred once more, inside the
 error log itself, and we report that instance too. Finally, we state the limitation that
 governs all of this: the log is written by the same agent that made the errors,
@@ -99,7 +99,8 @@ occasionally notices things the agent did not, so that self-report can be
 partially checked.
 
 This paper reports on such a task and releases the resulting data. The agent
-maintains a forecasting ledger over six financial assets. Each business day it
+maintains a forecasting ledger over \NumAssets{} financial assets, six of them
+forecastable. Each business day it
 records point forecasts, $80\%$ intervals and up-move probabilities at 1-day,
 1-week and 1-month horizons, before outcomes are known; the ledger seals them
 and scores them automatically. The analysis plan was pre-registered and
@@ -331,7 +332,7 @@ that was later corrected. We list all four and mark which is which, rather than 
 \toprule
 Record & Fit & Latency & The rule that existed but was not enforced \\
 \midrule
-\textbf{K93} & clear & \LatMax{} d & ``Index values must be cross-checked
+\textbf{K93} & clear & \KNineThreeLat{} d & ``Index values must be cross-checked
 against the previous close.'' Written after a $5\%$ index mis-read; no code
 ever checked. \\
 \textbf{K91} & clear & \KNineOneLat{} d & Three rules (shadow intervals, an
@@ -370,23 +371,27 @@ hide longer than errors of \emph{wrong value}, since a wrong number can be
 cross-checked against another number and a missing one cannot. Absence-like
 records ($n = \AbsN$) have median latency $\AbsMedian$ days and mean
 $\AbsMean$; the remainder ($n = \OthN$) have median $\OthMedian$ and mean
-$\OthMean$. A Mann--Whitney test gives $z = \MWZ$, two-sided $p = \MWP$:
-\textbf{not supported}.
+$\OthMean$. A Mann--Whitney test gives $z = \MWZ$, two-sided $p = \MWP$. When this
+manuscript was first drafted the same test returned nothing; the separation
+appeared as records accumulated, and it now sits on the conventional side of
+$0.05$ in the predicted direction.
 
-We report it, and we also report why it would not have been evidence had it
+We report it, and we report why it is not evidence even though it
 succeeded. The hypothesis was formed after seeing the latency distribution.
 Worse, the operationalisation was too: ``absence-like'' is not a field in the
 log but a grouping of two of the eight error classes, and we chose which two
 \emph{after} looking. With eight classes there are $2^{8}$ possible groupings,
 and nothing constrained our choice except the shape of the data. A test whose
 hypothesis, grouping and direction are all selected post hoc has no
-interpretable $p$-value; the number above is reported for completeness and
-should be read as a description of this sample, not as a test. The hypothesis
+interpretable $p$-value, and this is exactly the situation in which a
+$p$ below $0.05$ is least informative: the grouping was chosen to make the
+separation visible. The number above describes this sample. It is not a test,
+and we would have reported it identically had it come out null. The hypothesis
 is now registered prospectively, with the grouping fixed in advance, and will
-be answered by records this manuscript has not seen. The difference lives
-entirely in the tail, driven by a single \LatMax-day observation. We report this
-because it was run, and because the hypothesis was formed \emph{after} looking
-at the data; it is registered for prospective testing rather than claimed.
+be answered by records this manuscript has not seen. The difference lives in the tail:
+the two groups have almost the same median and differ by a factor of nearly
+three in the mean. The hypothesis is registered for prospective testing rather
+than claimed.
 
 \section{Limitations}\label{sec:limits}
 
@@ -407,7 +412,7 @@ While auditing this manuscript we recomputed every latency value from the two
 dates that define it. Three of \ErrN{} disagreed with the stored figure. Two
 were off by a day. One, the record used above as the clearest example of the
 pattern, stored \emph{four hundred} days where the arithmetic gives
-\LatMax. The value had been entered by hand; the field is derivable; no check
+\KNineThreeLat. The value had been entered by hand; the field is derivable; no check
 existed. A four-hundred-day latency was impossible on its face, since the
 ledger is \NumDays{} days old. Neither the agent that wrote the figure nor the
 human who reviewed the release noticed.

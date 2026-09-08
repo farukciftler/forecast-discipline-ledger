@@ -218,6 +218,14 @@ def main():
             return int(r["record_id"].lstrip("Kk"))
         except ValueError:
             return None
+    # Per-record latencies are their OWN macros. They were once written as
+    # \LatMax because the record happened to hold the maximum at the time; when
+    # its stored value was corrected the macro silently began pointing at a
+    # different record, and the manuscript claimed a latency the record never
+    # had. A derived aggregate is not a substitute for a specific value.
+    k93 = next((r for r in E if r["record_id"] == "K93"), None)
+    if k93:
+        print(f"  K93 latency            = {reg('KNineThreeLat', k93['latency_days'])}")
     k91 = next((r for r in E if r["record_id"] == "K91"), None)
     if k91:
         print(f"  K91 latency            = {reg('KNineOneLat', k91['latency_days'])}")

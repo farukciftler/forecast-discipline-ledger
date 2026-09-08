@@ -25,6 +25,13 @@ jobs:
       - name: Every published finding recomputes from the CSVs
         run: python3 analysis/reproduce.py
 
+      # The manuscript's figures are generated and guarded by check_paper.py.
+      # The markdown's were typed by hand and drifted four times in one day,
+      # each time correct when written and stale hours later. This step is the
+      # guard the prose never had.
+      - name: prose figures match the data
+        run: python3 analysis/check_docs.py
+
       - name: Manuscript numbers are generated, current, and complete
         run: python3 paper/check_paper.py
 

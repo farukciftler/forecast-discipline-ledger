@@ -35,6 +35,8 @@ BUILTIN = re.compile(
 ALLOWED_LITERALS = {
     "0.80",   # the interval's nominal target, fixed by the protocol
     "0.5",    # the null of the one-sided sign test
+    "0.05",   # the conventional significance threshold named as a convention,
+              # not a value measured from this data
     "95",     # "Wilson 95% CI" -- a convention, not a measurement
     "80",     # "80% intervals" in prose
     "10",     # exponent in "$10^{-8}$"-style prose, and "10 values"
