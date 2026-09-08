@@ -1,7 +1,7 @@
 # Forecast Discipline Ledger
 
-A 20-day (and continuing) record of an LLM agent making dated, scored,
-pre-registered predictions about six financial assets — and, separately, a
+A 39-day (and continuing) record of an LLM agent making dated, scored,
+pre-registered predictions about seven financial assets — and, separately, a
 structured log of every operational error the agent made while doing it.
 
 This directory is **fully anonymized** and contains no personal information.
@@ -14,8 +14,8 @@ See [Privacy](#privacy-and-anonymization) below.
 Two datasets that happen to be produced by the same daily process:
 
 **1. A forecast calibration ledger.** Every trading day the agent writes a
-point forecast, an 80% interval, and a probability of an up-move, for each of
-six assets at 1-day, 1-week and 1-month horizons — *before* the outcome is
+point forecast, an 80% interval, and a probability of an up-move, for each
+tradeable asset at 1-day, 1-week and 1-month horizons — *before* the outcome is
 known. Forecasts are sealed, then scored automatically against the realized
 value and against three baselines (naive / drift / momentum).
 
@@ -36,19 +36,24 @@ the loop.
   dataset. The forecasts were never used to trade.
 - **Not a claim that LLMs can forecast prices.** The headline result so far
   is the opposite (see [FINDINGS.md](FINDINGS.md)).
-- **Not a controlled study.** n=1 agent, n=1 operator, n=1 domain, and — so
-  far — n=1 volatility regime. See *Limitations*.
+- **Not a controlled study.** n=1 agent, n=1 operator, n=1 domain and, so
+  far, n=1 volatility regime. See *Limitations*.
 
-## Headline results so far (n=148 scored forecasts, 20 days)
+## Headline results so far (n=405 scored forecasts, 39 days)
 
 | Question | Result |
 |---|---|
-| Does the point forecast reduce error spread vs. knowing only the mean? | **No** — 5 of 6 assets show ≤0 gain, 3 are negative |
-| Do forecasts beat all three baselines? | **No** — 39.1% [31.0–47.7], p=0.99 |
-| Does `p_up` beat the running base rate (Brier skill score)? | **No** — BSS = −0.25 |
-| Are the 80% intervals calibrated? | **No, too wide** — 87.2% coverage, p=0.030 |
-| Median days for the agent to detect its own error | **1** (mean 2.6, max 15) |
-| Share of errors that were repeats of a prior recorded error | **27%** |
+| Does the point forecast reduce error spread vs. knowing only the mean? | **Mostly no** — 3 of 6 assets show ≤0 gain; only one (A4, +14.4%) is clearly positive |
+| Do forecasts beat all three baselines at once? | **No** — 33.4% [28.8–38.4], p=1.0 |
+| Do they beat each baseline taken alone? | Yes: naive 63.0%, drift 64.7%, momentum 75.7% (all p<0.001) |
+| Does `p_up` beat the running base rate (Brier skill score)? | **Barely** — BSS = +0.020 walk-forward; −0.000 against a full-sample base rate |
+| Are the 80% intervals calibrated? | **No, too wide** — 87.7% coverage [84.1–90.5], p=0.0001 |
+| Median days for the agent to detect its own error | **1** (mean 5.6, max 37) |
+| Share of errors that were repeats of a prior recorded error | **39.6%** [30.6–49.4] |
+
+Note the gap between rows two and three: the agent clears each baseline
+individually and fails to clear all three simultaneously. That gap is the
+result. Beating a single baseline in a one-directional market is cheap.
 
 These are all *negative or diagnostic* results, and they are reported as the
 primary findings rather than buried. The design reason is in
@@ -97,7 +102,7 @@ Never exported, by rule:
 - All free text: forecast rationales, evidence claims, notes, error summaries
 - A second household ledger present in the source — never read by the exporter
 
-Assets appear only as `A1`…`A6` with a generic descriptor (asset class,
+Assets appear only as `A1`…`A7` with a generic descriptor (asset class,
 rough composition, pricing mechanics). The pseudonym mapping lives only in
 the private repository and is **not** in this directory.
 
@@ -123,20 +128,27 @@ context verifiable. Dates alone identify no one.
 ## Limitations
 
 1. **No control arm.** There is no "same agent without an error log" condition,
-   so the 27% repeat rate has nothing to be compared against.
+   so the 39.6% repeat rate has nothing to be compared against.
 2. **Unknown denominator.** The error log contains only *detected* errors.
    Detection latency is measurable; the error *rate* is not. This is classic
    under-ascertainment and it biases every rate-like quantity.
 3. **One regime.** The entire sample sits in a single, unusually calm and
-   directional market window. Four of six assets traded at 60–73% of their
-   250-day volatility. Any interval-calibration conclusion is conditional on
-   that.
+   directional market window; realized volatility ran below the 250-day
+   figure for most assets. Any interval-calibration conclusion is conditional
+   on that, and the excess interval coverage is at least partly a regime
+   artifact rather than a pure band-width error.
 4. **Self-reported.** The agent classifies its own errors. Hypothesis H9 in
    the pre-registration exists precisely to test whether that self-assessment
    is biased in its own favor — and a *significant* result there is bad news,
    not good.
-5. **n is small.** 20 days, 148 scored rows, ~3 effectively independent
-   observations per day. Nothing here is statistically settled.
+5. **n is small.** 39 days, 405 scored rows, ~3 effectively independent
+   observations per day once the correlation between assets is accounted for.
+   Nothing here is statistically settled.
+6. **Two Brier baselines, two answers.** `analysis/reproduce.py` scores `p_up`
+   against a *walk-forward* base rate (only rows already seen); the manuscript
+   scores it against the *full-sample* base rate, which is a look-ahead and
+   therefore harder baseline. BSS is +0.020 under the first and −0.000 under
+   the second. Neither is a skill claim; both round to nothing.
 
 ## License and citation
 

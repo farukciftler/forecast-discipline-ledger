@@ -94,9 +94,19 @@ def main():
         llm.append((num(r["p_up"]) - outcome) ** 2)
         ups += outcome
         n += 1
+    bss = 1 - st.mean(llm) / st.mean(clim)
     print(f"  n = {len(llm)}   agent = {st.mean(llm):.4f}   climatology = {st.mean(clim):.4f}"
-          f"   BSS = {1 - st.mean(llm)/st.mean(clim):+.3f}")
-    print("  BSS < 0  =>  p_up loses to simply tracking the base rate.")
+          f"   BSS = {bss:+.3f}")
+    # The verdict is COMPUTED, not typed. It used to be a fixed string reading
+    # "BSS < 0 => p_up loses"; the sign later flipped and the line kept saying
+    # the opposite of what the number above it showed.
+    print("  BSS < 0  =>  p_up loses to simply tracking the base rate."
+          if bss < 0 else
+          "  BSS > 0  =>  p_up edges out the running base rate, by a small margin.")
+    # NOTE: this climatology is WALK-FORWARD (base rate from rows seen so far).
+    # paper/compute_numbers.py uses the FULL-SAMPLE base rate, which is a
+    # look-ahead baseline and therefore a harder one. The two BSS figures are
+    # not interchangeable; see FINDINGS.md.
 
     # --- 5. does the point forecast reduce spread? ----------------------
     h("5. Does the point forecast reduce error spread? (1-day)")
@@ -105,6 +115,7 @@ def main():
         if r["horizon"] == "1d" and num(r["actual_pct"]) is not None:
             by[r["asset_id"]].append(r)
     print(f"  {'id':4s} {'n':>3s} {'with forecast':>14s} {'mean only':>11s} {'gain':>8s}")
+    gains = []
     for a in sorted(by):
         v = by[a]
         act = [num(r["actual_pct"]) for r in v]
@@ -112,8 +123,13 @@ def main():
         s_pred = st.pstdev(res)
         m = st.mean(act)
         s_mean = st.pstdev([x - m for x in act])
-        print(f"  {a:4s} {len(v):3d} {s_pred:13.3f}pp {s_mean:10.3f}pp {(1-s_pred/s_mean)*100:+7.1f}%")
-    print("  Positive gain = the forecast helped. Five of six are <= 0.")
+        g = (1 - s_pred / s_mean) * 100
+        gains.append(g)
+        print(f"  {a:4s} {len(v):3d} {s_pred:13.3f}pp {s_mean:10.3f}pp {g:+7.1f}%")
+    # COUNTED, not typed. This line was a fixed "Five of six are <= 0" and
+    # stayed frozen while the underlying tally changed with the data.
+    neg = sum(1 for g in gains if g <= 0)
+    print(f"  Positive gain = the forecast helped. {neg} of {len(gains)} are <= 0.")
 
     # --- 6. error log ----------------------------------------------------
     h("6. Error log")

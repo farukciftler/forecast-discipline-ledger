@@ -97,3 +97,7 @@ K94,2026-09-07,2026-09-07,0,agent,yes,K91,process,routine_flow,neutral
 K95,2026-09-07,2026-08-01,37,human,no,,engine,routine_flow,neutral
 K96,2026-09-07,2026-09-07,0,human,no,K95,process,routine_flow,neutral
 K97,2026-09-07,2026-09-07,0,human,yes,K93,data,adversarial_review,unfavorable
+K98,2026-09-08,2026-09-07,1,agent,yes,K17,measurement,cross_check,neutral
+K99,2026-09-08,2026-08-04,35,agent,no,K79,measurement,engine_warning,neutral
+K100,2026-09-08,2026-08-20,19,agent,yes,K97,measurement,cross_check,neutral
+K101,2026-09-08,2026-08-20,19,human,yes,K99,process,human,neutral

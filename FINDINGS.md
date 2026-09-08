@@ -1,13 +1,13 @@
 # Findings to date
 
-**Sample:** 20 calendar days · 148 scored forecasts · 52 error records ·
-6 assets · one volatility regime.
+**Sample:** 39 calendar days · 405 scored forecasts · 101 error records ·
+7 assets · one volatility regime.
 
 Every number below is printed by `analysis/reproduce.py` from `data/` alone.
 Where prose and script disagree, the script is right.
 
 **Read this first:** at ~3 effectively independent observations per day,
-20 days is ~60 independent observations. Nothing here is settled. These are
+39 days is ~120 independent observations. Nothing here is settled. These are
 reported because *reporting negative results early* is the point of the
 design, not because they are conclusive.
 
@@ -22,15 +22,16 @@ would get from knowing only that asset's sample mean:
 
 | id | n | with forecast | mean only | gain |
 |---|---|---|---|---|
-| A1 | 19 | 1.178 pp | 1.149 pp | **−2.5%** |
-| A2 | 14 | 1.696 pp | 1.627 pp | **−4.3%** |
-| A3 | 14 | 2.607 pp | 2.583 pp | −0.9% |
-| A4 | 14 | 1.079 pp | 1.281 pp | **+15.8%** |
-| A5 | 11 | 0.959 pp | 0.965 pp | +0.6% |
-| A6 | 16 | 0.082 pp | 0.079 pp | −3.8% |
+| A1 | 38 | 1.337 pp | 1.335 pp | −0.2% |
+| A2 | 33 | 1.385 pp | 1.356 pp | **−2.1%** |
+| A3 | 33 | 1.855 pp | 1.862 pp | +0.4% |
+| A4 | 33 | 1.277 pp | 1.493 pp | **+14.4%** |
+| A5 | 30 | 1.002 pp | 1.012 pp | +1.0% |
+| A6 | 35 | 0.088 pp | 0.079 pp | **−11.5%** |
 
-Five of six show no gain; three are negative, i.e. the forecast made the
-spread *worse* than a constant would have.
+Three of six are negative; of the three positive, two are under half a
+percent, which at this sample size is indistinguishable from zero. Only A4
+stands out.
 
 **Consequence for intervals:** the floor on interval width is the asset's own
 volatility, not the agent's ignorance. More data cannot narrow it. This is
@@ -38,17 +39,21 @@ the quantitative form of the project's first stated principle — *one-day
 price forecasting is effectively random* — and it was written into the
 protocol before it was measured.
 
-A4's +15.8% is the one exception and is almost certainly noise at n=14. It is
-under an explicit test (CASES §3) whose reading rule was fixed in advance.
+A4's +14.4% is the one exception. It has now survived from n=14 to n=33 at
+much the same size, which is longer than noise usually lasts but still short
+of the pre-registered reading threshold (CASES §3). A4 is the asset whose
+main driver trades continuously while its own price is struck once a day, so
+part of the day's move is arithmetic rather than forecast. That is the
+leading explanation and it is not yet tested.
 
 ## 2. "Beat the baseline" depends entirely on which baseline
 
 | baseline | beaten | rate | CI95 | p (one-sided) |
 |---|---|---|---|---|
-| naive (0% change) | 104/148 | 0.703 | 0.625–0.770 | <0.001 |
-| drift (mean of last 5) | 86/128 | 0.672 | 0.587–0.747 | 0.0001 |
-| momentum (last change) | 93/128 | 0.727 | 0.644–0.796 | <0.001 |
-| **all three** | **50/128** | **0.391** | **0.310–0.477** | **0.995** |
+| naive (0% change) | 255/405 | 0.630 | 0.582–0.675 | <0.001 |
+| drift (mean of last 5) | 242/374 | 0.647 | 0.597–0.694 | <0.001 |
+| momentum (last change) | 283/374 | 0.757 | 0.711–0.797 | <0.001 |
+| **all three** | **125/374** | **0.334** | **0.288–0.384** | **1.0** |
 
 Each baseline is beaten individually. **All three together are not** — the
 result is on the wrong side of chance.
@@ -67,10 +72,10 @@ is not a baseline.**
 
 | | value |
 |---|---|
-| coverage | **0.872** (129/148) |
-| CI95 | 0.808 – 0.916 |
+| coverage | **0.877** (355/405) |
+| CI95 | 0.841 – 0.905 |
 | target | 0.80 |
-| p (two-sided exact binomial) | **0.030** |
+| p (two-sided exact binomial) | **0.0001** |
 
 Significant over-coverage. Per pre-registration H2, that triggers a
 correction. The correction was **not** applied; a shadow measurement was
@@ -81,16 +86,21 @@ its 250-trading-day volatility:
 
 | id | sample | 250-day | ratio |
 |---|---|---|---|
-| A1 | 1.142 | 1.850 | **0.62×** |
-| A4 | 1.281 | 2.130 | **0.60×** |
-| A5 | 0.965 | 1.314 | 0.73× |
-| A6 | 0.085 | 0.092 | 0.92× |
-| A2 | 1.627 | 1.504 | 1.08× |
-| A3 | 2.554 | 1.187 | **2.15×** |
+| A1 | 1.223 | 1.870 | **0.65×** |
+| A4 | 1.683 | 2.162 | 0.78× |
+| A3 | 1.023 | 1.196 | 0.86× |
+| A2 | 1.354 | 1.508 | 0.90× |
+| A6 | 0.088 | 0.097 | 0.91× |
+| A5 | 1.209 | 1.291 | 0.94× |
 
-Four of six assets traded at 60–73% of their long-run volatility. Intervals
-sized for the long run *should* over-cover in such a window. Recalibrating to
-it would leave them too narrow when volatility normalizes.
+**Every asset traded below its long-run volatility**, from 0.65× to 0.94×.
+Intervals sized for the long run *should* over-cover in such a window.
+Recalibrating to it would leave them too narrow when volatility normalizes.
+
+This table has also moved a lot since the first release, when two assets sat
+above 1.0× and the spread ran from 0.60× to 2.15×. The convergence is what a
+short sample looks like when it stops being short, and it is a reason to
+treat any single reading of this table as provisional.
 
 (The 250-day column needs price levels and is therefore computed in the
 private source, not reproducible from `data/`. The sample column is
@@ -98,28 +108,35 @@ reproducible; `reproduce.py` prints slightly different values because it
 treats multi-day gaps differently.)
 
 A second contributor is distributional shape: **all six assets have
-`std / sigma_MAD` between 1.15 and 1.54**, i.e. fat tails. A Gaussian
+`std / sigma_MAD` between 1.12 and 1.66**, i.e. fat tails. A Gaussian
 `1.2816 × std` interval over-covers a fat-tailed distribution by
 construction.
 
-## 4. `p_up` loses to the running base rate
+## 4. `p_up` is indistinguishable from the base rate
 
 | | value |
 |---|---|
-| agent mean Brier | 0.208 |
-| running-climatology Brier | 0.194 |
-| **Brier skill score** | **−0.08** |
+| agent mean Brier | 0.2131 |
+| walk-forward climatology Brier | 0.2176 |
+| **Brier skill score** | **+0.020** |
 
-Negative skill: simply tracking the base rate of up-days would have scored
-better than the agent's stated probabilities. (A shorter 30-day window gives
-a more negative figure; the full-sample number is quoted because it is what
-`reproduce.py` computes.)
+The sign flipped since the first release, when BSS was −0.08. It is now
+positive and small enough that it is not a skill claim: a skill score of
+0.020 means the agent's stated probabilities and a running tally of how often
+prices went up score about the same.
 
-Directional accuracy over the same rows is **102/137 = 74.5%**
-[66.6–81.0]. This looks impressive and **is not reported as a headline**,
+**Two baselines, two answers.** `reproduce.py` uses a *walk-forward* base rate
+built only from rows already resolved. The manuscript uses the *full-sample*
+base rate, which is a look-ahead and therefore a harder baseline, and gives
+BSS = −0.000. Both round to nothing, but they are not interchangeable and the
+difference is stated rather than resolved by picking the friendlier one.
+
+Directional accuracy over the same rows is **258/380 = 67.9%**
+[63.0–72.4]. This looks impressive and **is not reported as a headline**,
 because it is measuring the regime: in a window where most days were up,
 predicting "up" scores well while carrying no information. The BSS is the
-statistic that removes exactly that flattery — and it is negative.
+statistic that removes exactly that flattery, and it removes essentially all
+of it.
 
 Detecting a genuine 52% edge would need ~3,900 independent observations
 (≈6 years at this rate).
@@ -128,33 +145,56 @@ Detecting a genuine 52% edge would need ~3,900 independent observations
 
 | | value |
 |---|---|
-| records | 52 in 20 days (≈2.6/day) |
-| detection latency | median **1 day**, mean 2.6, max 15 |
-| detected by agent / human | **42 / 10** |
-| repeats of a prior record | **15/52 = 28.8%** [18.3–42.3] |
+| records | 101 in 39 days (≈2.6/day) |
+| detection latency | median **1 day**, mean 5.6, max 37 |
+| detected by agent / human | **80 / 21** |
+| repeats of a prior record | **40/101 = 39.6%** [30.6–49.4] |
 
-Most common classes: measurement contamination (7), engine bugs (6), model
-errors (4), institutional mechanics (4).
+Classes: measurement 30, model 14, data 14, engine 11, verification 11,
+process 9, institution 8, accounting 4.
 
-Three observations:
+Detection mechanisms: routine flow 30, cross-check 18, reasoning 14, human 11,
+custodian statement 8, next-day observation 6, pre-registered test 5, engine
+warning 4, adversarial review 3, reconciliation 2.
+
+The mean latency (5.6 days) is five times the median (1 day). Most errors are
+caught the next morning; a long tail is not caught for weeks, and that tail is
+where the interesting records are.
+
+**H9 has its first reading.** Of the corrections with a recorded direction:
+favorable 9, unfavorable 11, neutral 30 (n=50). A significant skew toward
+*favorable* would be bad news, since it would mean corrections get chosen
+after seeing which way they cut. No skew is detected, which is the outcome the
+test was designed to be able to refuse.
+
+Four observations:
 
 **The error log accumulates ~2.6× faster than useful forecast observations**,
 and it measures a question that is answerable on a much shorter timescale.
 Pre-registered hypotheses H7–H9 need ~120 records — roughly two more months,
 not the ~6 years the forecasting question needs.
 
-**The 28.8% repeat rate is the most decision-relevant number in the dataset**
+**The 39.6% repeat rate is the most decision-relevant number in the dataset**
 for anyone building agent memory: it asks whether writing a failure down
 prevents its recurrence. It currently has nothing to be compared against —
 there is no control arm (README, *Limitations*).
 
-**The taxonomy degrades as it grows.** `class` has 25 values over 52 records;
-`subclass` has 50 values over 52 records. Asked to classify its own failures,
-the agent invents a fresh category almost every time. Only `class`,
-`detected_by`, `latency_days` and `is_repeat` are usable for aggregation.
-This is a design lesson, not a data-cleaning nuisance: **agent-generated
-taxonomies need a closed vocabulary imposed up front**, or they become free
-text wearing a column header.
+**The repeat rate rose from 28.8% to 39.6% as the log grew.** Writing a
+failure down is doing less to prevent its recurrence than the first release
+suggested. There is still nothing to compare it against.
+
+**The taxonomy degraded until a closed vocabulary was imposed.** In the source
+ledger the free-text `class` field reached 25 values over 52 records and
+`subclass` reached 50 over 52: asked to classify its own failures, the agent
+invented a fresh category almost every time. A controlled vocabulary was added
+afterwards, and the published `class_k` and `mechanism_k` columns use it. The
+free-text originals are **not published**, because they are not analysable and
+translating them would only launder that. This is a design lesson rather than
+a data-cleaning nuisance: **agent-generated taxonomies need a closed
+vocabulary imposed up front**, or they become free text wearing a column
+header. Note also that the rows classified before the vocabulary existed were
+mapped to it *after* the data was visible, so they are exploratory; only
+records from the freeze point onward count as confirmatory.
 
 ---
 
@@ -163,9 +203,9 @@ text wearing a column header.
 | Finding | What would overturn it |
 |---|---|
 | Point forecasts add nothing | A sustained positive gain across ≥4 assets over ≥100 observations |
-| All-three-baselines not beaten | Rate significantly above 0.5 at n ≥ 300 |
+| All-three-baselines not beaten | Rate significantly above 0.5 at n ≥ 300 (n is now 374 and the rate is 0.334) |
 | Intervals too wide | A volatility regime in which coverage falls below 0.80 |
-| `p_up` has negative skill | BSS turning positive in a two-sided regime |
+| `p_up` has no skill | BSS staying clear of zero, in either direction, in a two-sided regime |
 | Repeat rate meaningful | A control arm — the same task run without an error log |
 
 ## Standing prediction

@@ -14,7 +14,7 @@ collapse.
 
 | column | meaning |
 |---|---|
-| `asset_id` | Pseudonym `A1`…`A6`. Mapping to real instruments is not published |
+| `asset_id` | Pseudonym `A1`…`A7`. Mapping to real instruments is not published |
 | `asset_class` | `spot` · `fund_daily` (NAV published T+1, business days only) · `fx_deposit` |
 | `description` | Composition and pricing mechanics, no identifiers |
 
@@ -74,58 +74,68 @@ collapse.
 | `detected_by` | `agent` · `human` |
 | `is_repeat` | `yes` if it recurred after a prior record covering the same failure |
 | `prior_record` | The earlier `record_id`, when `is_repeat = yes` |
+| `class_k` | Closed error taxonomy, eight values (below) |
+| `mechanism_k` | What caught it, ten values (below) |
+| `score_effect` | `favorable` · `unfavorable` · `neutral`, or blank when unknown. Whether the correction moved a reported number in the agent's own favour. A skew toward `favorable` would be bad news, and testing for it is the point of the field |
 
-### `class` — top-level error taxonomy
+### `class_k` — top-level error taxonomy
 
-| label | translation |
+A closed vocabulary of eight values. Counts over the current sample are in
+[FINDINGS.md](FINDINGS.md).
+
+| label | meaning |
 |---|---|
-| `olcum_kirliligi` | measurement contamination — a scored observation that should not count |
-| `olcum_hatasi` | measurement error — computed the wrong quantity |
-| `olcum_eksigi` | measurement gap — a quantity that should have been recorded was not |
-| `motor_hatasi` | engine bug — the deterministic ledger code behaved wrongly |
-| `model_hatasi` | model error — a wrong assumption about how an asset behaves |
-| `model_belirsizligi` | model uncertainty — competing models, not yet resolved |
-| `kurumsal_mekanik` | institutional mechanics — wrong assumption about how a product settles/pays |
-| `surec_hatasi` | process error — a required step was skipped |
-| `muhasebe` | accounting — double counting or mis-attribution |
-| `tarihsiz_sayi` | undated number — a value used without knowing which day it belonged to |
-| `veri_hatasi` / `veri_kaynagi` / `veri_kalitesi` | data error / source failure / quality |
-| `n1_iddiasi` | n=1 claim — a conclusion drawn from a single observation |
-| `kalibrasyon` | calibration — scoring or interval rule wrong |
-| `protokol` / `tahmin_politikasi` | protocol or forecasting-policy error |
-| `gerekce_hatasi` / `cikarim_hatasi` | faulty rationale / faulty inference |
-| `kaynak_celiskisi` | source conflict resolved incorrectly |
-| `kanit_agirligi` | evidence weighting error |
-| `dogrulama` | verification step failed or was skipped |
-| `kok_neden` | root-cause misattribution |
-| `oturmamis_veri` | unsettled data — a value read before it was final |
-| `tahmin_hatasi` | forecast construction error |
+| `measurement` | a scored observation was computed wrongly, or should not have counted |
+| `model` | a wrong assumption about how an asset behaves |
+| `data` | a source failed, returned a stale value, or was read without its date |
+| `engine` | the deterministic ledger code behaved wrongly |
+| `verification` | a checking step failed or was skipped |
+| `process` | a required step of the daily routine was skipped |
+| `institution` | a wrong assumption about how a product settles or pays |
+| `accounting` | double counting or mis-attribution between holdings |
 
-### `detection_mechanism`
+An earlier free-text `class` field is **not published**. It reached 25 values
+over the first 52 records and its `subclass` companion reached 50, which is to
+say the agent invented a fresh category almost every time it was asked to
+classify itself. That field is the evidence for the design lesson in
+FINDINGS.md rather than a usable variable, and translating it would have
+dressed unusable data in a second language.
 
-Grouped, since the raw vocabulary is long-tailed (see caveat below):
+### `mechanism_k` — what caught the error
 
-| group | raw labels |
+A closed vocabulary of ten values.
+
+| label | meaning |
 |---|---|
-| **Agent reasoning** | `akil_yurutme`, `ikinci_okuma`, `surucu_kontrolu`, `kok_neden` |
-| **Cross-check** | `capraz_kontrol`, `kaynak_capraz_kontrol`, `ucgenleme`, `cift_kaynak_nav`, `kumulatif_uyum` |
-| **External ground truth** | `custodian_statement`, `custodian_total`, `fund_composition_source`, `fund_source_dated_api`, `makine_okunur_kaynak` |
-| **Routine process** | `rutin_akis`, `rutin_denetim`, `cozumleme`, `acik_is_listesi`, `sistemi_calistirmak`, `altyapi_kurulumu` |
-| **Engine warning** | `motor_uyarisi` |
-| **Human** | `kullanici_bildirimi`, `kullanici_sorusu` |
-| **Literature / research** | `literatur_taramasi`, `derin_arastirma`, `web_arastirmasi` |
-| **Later observation** | `ertesi_gun_gozlemi`, `ikinci_gozlem`, `alternatif_baseline`, `elle_dogrulama` |
+| `routine_flow` | the ordinary daily sequence surfaced it, without anyone looking for it |
+| `cross_check` | two sources of the same quantity disagreed |
+| `reasoning` | the agent noticed it while thinking about something else |
+| `human` | the operator noticed it |
+| `custodian_statement` | an external account statement contradicted the ledger |
+| `reconciliation` | a total was matched against an independent total |
+| `next_day_observation` | the following day's data made it visible |
+| `preregistered_test` | a test written in advance failed |
+| `engine_warning` | the deterministic code refused or warned |
+| `adversarial_review` | a scheduled review pass looking specifically for it |
 
-### Caveat: the taxonomy is agent-generated and long-tailed
+Two of these deserve comment. `routine_flow` is the largest single category,
+which says that most errors are caught by the process running at all rather
+than by anyone checking. `preregistered_test` is among the smallest, and its
+denominator is short: tests can only catch what someone thought to write a
+test for.
 
-`class` has 25 values across 52 records; `subclass` has **50 values across 52
-records** — effectively free text. `impact` and `fix_type` are similar.
+### Caveat: the closed vocabulary was imposed late
 
-This is itself a finding rather than a defect to hide. An agent asked to
-classify its own failures **invents a new category almost every time** unless
-constrained to a closed vocabulary. Only `class`, `detected_by`,
-`latency_days`, and `is_repeat` are reliable for aggregation; `subclass`
-should be treated as a label, not a variable.
+The published `class_k` and `mechanism_k` columns are closed vocabularies, but
+they were not there from the start. The original free-text fields reached 25
+values across the first 52 records, and their `subclass` companion reached 50
+across the same 52. An agent asked to classify its own failures invents a new
+category almost every time unless it is constrained to a fixed list.
+
+This matters for how the columns should be read. Records logged before the
+vocabulary existed were mapped onto it **after** the data was visible, so those
+rows are exploratory. Only records from the freeze point onward count as
+confirmatory, and the two pools are reported separately rather than pooled.
 
 ## `market_state.csv`
 

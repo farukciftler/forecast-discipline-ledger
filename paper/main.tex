@@ -167,6 +167,21 @@ to apply. Whether this makes the failure more or less tractable than the
 human case is open; we can only report that it happened repeatedly and, once,
 inside the audit of this manuscript (\S\ref{sec:limits}).
 
+\paragraph{Technical debt.} The mechanism of \S\ref{sec:mechanism} has an
+older name in software engineering. Behutiye et al.~\cite{behutiye2017td},
+reviewing technical debt in agile development, report that among the
+management strategies found in the literature the two that recur most are
+refactoring and \emph{increasing the visibility of the debt}, and that
+pressure for quick delivery is among its most common causes. Both map onto
+what we see. A rule that is written down but never wired into the process is
+debt of exactly this kind: the cost is deferred, it accrues quietly, and it is
+paid in repeat failures. Our latency field is a visibility instrument in their
+sense, since it measures how long a defect survived unnoticed rather than how
+many defects there were, and the causal note is ours too, as several of our
+records begin with a warning that was on screen and read too fast. What this
+setting adds is that debtor and creditor are the same agent, which takes on
+the debt in the very act of writing the lesson down.
+
 \paragraph{What we did not find.} We did not find prior work releasing
 longitudinal agent error telemetry with detection latency and attribution, nor
 work applying capture--recapture to estimate an agent's unobserved error

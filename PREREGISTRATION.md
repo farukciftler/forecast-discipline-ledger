@@ -152,7 +152,7 @@ correlation fell from ~84% to ~3% after 2022 as the marginal buyer changed.
 
 ## H14 — Interval rule v5, measured by shadow band (added 2026-08-20)
 
-H2's threshold has been met (coverage 87.2%, p = 0.030), so a correction is
+H2's threshold has been met (coverage 87.7%, p = 0.0001), so a correction is
 due. But the correction itself creates a measurement problem: incrementing
 `protocol_version` splits the pool, so the new rule's coverage could only be
 learned ~2 months *after* committing to it.
