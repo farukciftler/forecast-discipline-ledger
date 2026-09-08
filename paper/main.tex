@@ -136,9 +136,29 @@ and score the attempt. The design is well suited to measuring capability and
 poorly suited to measuring what happens to a system an agent tends over time.
 An agent that scores well on isolated tasks may still degrade a system it
 maintains, and the degradation is invisible to a benchmark that never runs
-twice on the same artefact. We are not aware of a released dataset that follows
-a single agent through a continuing task and records its operational failures
-with detection latency.
+twice on the same artefact.
+
+Continuing deployments do exist and are reported. Williams et
+al.~\cite{williams2026pomona} ran Pomona, an agent that opens small repair
+pull requests, for three months inside Bloomberg and evaluated it with a
+survey of senior engineers. The framing is close to ours in one respect and
+opposite in another. Close, because their stated aims are reducing technical
+debt and keeping engineer trust, which are the two things a maintained system
+runs on. Opposite, because they measure what the agent produced and we measure
+what it got wrong. Their unit is the accepted pull request; ours is the logged
+mistake, its detection latency, and who caught it.
+
+\paragraph{The human in the loop is a cost, not a free correction.} Our
+process has a supervisor who catches what the agent does not, and
+\ErrHuman{} of \ErrN{} records were found that way. It is tempting to read
+that as reassurance. Garousi~\cite{garousi2026oversight} argues the opposite
+and we think he is right: reviewing and reworking what an agent produces is
+not optional and not free, and the volume of suggestions imposes a cognitive
+load of its own. A supervision rate is therefore a cost figure as much as a
+safety figure, and an agent that needs less of it is doing better than one
+whose errors merely get caught. We cannot yet separate the two, for the reason
+given in \S\ref{sec:limits}: we never recorded whether the agent would have
+caught what the human caught.
 
 \paragraph{Forecast scoring.} The scoring apparatus used here is standard.
 Proper scoring rules and their decomposition are treated by Gneiting and
@@ -183,11 +203,25 @@ records begin with a warning that was on screen and read too fast. What this
 setting adds is that debtor and creditor are the same agent, which takes on
 the debt in the very act of writing the lesson down.
 
-\paragraph{What we did not find.} We did not find prior work releasing
-longitudinal agent error telemetry with detection latency and attribution, nor
-work applying capture--recapture to estimate an agent's unobserved error
-population. If such work exists we would like to know, and we say this to
-invite correction rather than to claim novelty by absence of search.
+The Dagstuhl manifesto on reframing technical
+debt~\cite{avgeriou2025reframing} names tooling and data collection among the
+places current practice falls short, and our records are a small instance of
+both shortfalls at once. The rule that went unenforced was written in a
+document no tool reads, and the only reason its cost is visible here is that
+we happened to be keeping a log with a latency field in it. Nothing about the
+process would have surfaced it otherwise, and nothing in the tooling we were
+using was looking.
+
+\paragraph{What we did not find.} Longitudinal agent deployments are
+reported, as \cite{williams2026pomona} shows. What we did not find is a
+released dataset from one of them recording the agent's own operational
+failures with detection latency and attribution, nor work applying
+capture--recapture to estimate an agent's unobserved error population. The
+distinction matters and is narrower than the claim we first wrote: the gap is
+not that nobody runs agents for months, it is that what those months produce
+in the way of failure data stays inside the organisation that collected it.
+If such a release exists we would like to know, and we say this to invite
+correction rather than to claim novelty by absence of search.
 
 \section{Setup}\label{sec:setup}
 
