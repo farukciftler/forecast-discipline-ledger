@@ -91,21 +91,21 @@ This design answers ``can the agent do X?'' It does not answer a question that
 matters more once agents are deployed: \emph{what happens to a system an agent
 maintains over months, and how do its failures actually surface?}
 
-Answering that requires a task with three properties that benchmarks usually
-lack. It must be continuing rather than one-shot, so that errors have time to
-compound or to be caught. It must have consequences, so that the agent has
-something to be wrong about. And it must have a human in the loop who
-occasionally notices things the agent did not, so that self-report can be
-partially checked.
+Answering that requires a task benchmarks usually cannot provide. It has to
+run continuously rather than once, so errors have time to compound or to be
+caught, and it has to carry consequences, so the agent has something to be
+wrong about. It also needs a human in the loop. Without someone who
+occasionally notices what the agent missed, self-report cannot be checked at
+all.
 
 This paper reports on such a task and releases the resulting data. The agent
 maintains a forecasting ledger over \NumAssets{} financial assets, six of them
 forecastable. Each business day it
 records point forecasts, $80\%$ intervals and up-move probabilities at 1-day,
-1-week and 1-month horizons, before outcomes are known; the ledger seals them
-and scores them automatically. The analysis plan was pre-registered and
-protocol changes are versioned, so that observations produced under different
-rules are not pooled.
+1-week and 1-month horizons, before outcomes are known. The ledger seals them
+and scores them automatically. The analysis plan was pre-registered, and
+protocol changes increment a version so that observations produced under
+different rules never land in the same pool.
 
 Our contribution is not a forecasting method. On the contrary, the forecasting
 results are null, and we report them as such. The contribution is the
@@ -121,9 +121,9 @@ attribution.
   \item Pre-registered null results on short-horizon forecasting, including
         interval mis-calibration in a specific and correctable direction
         (\S\ref{sec:forecast}).
-  \item A named failure mode, \emph{rules written but not mechanised}, with
-        four illustrated instances and a measured repeat rate
-        (\S\ref{sec:mechanism}).
+  \item A named failure mode, \emph{rules written but not mechanised},
+        illustrated by two clear instances and two adjacent ones, with a
+        measured repeat rate (\S\ref{sec:mechanism}).
   \item A design proposal that would make the unobserved error population
         estimable rather than merely acknowledged (\S\ref{sec:limits}).
 \end{enumerate}
@@ -194,11 +194,11 @@ invite correction rather than to claim novelty by absence of search.
 \paragraph{The task.} A daily process over \NumAssets{} assets (six
 forecastable, pseudonymised \texttt{A1}--\texttt{A7}): collect prices from machine-readable
 sources, record a market-state snapshot, resolve any forecasts that have come
-due, scan the day's news, write new forecasts, and commit. Steps that must be
-deterministic are performed by a fixed engine; steps that require judgement
-are performed by the agent. The engine never fetches data and never produces
-forecasts; the agent never computes scores. This split is deliberate: the
-arithmetic must not hallucinate, and neither must the data collection.
+due, scan the day's news, write new forecasts, and commit. A fixed engine performs the steps that must be
+deterministic, and the agent performs the ones that need judgement. The engine
+never fetches data and never writes a forecast. The agent never computes a
+score. The split is deliberate. Arithmetic must not hallucinate, and neither
+must data collection.
 
 \paragraph{What is recorded.} Every forecast carries a point estimate, an
 $80\%$ interval, an up-move probability, a stated confidence, the evidence
@@ -240,12 +240,13 @@ joint row: $(\BeatAllLo,\,\BeatAllHi)$.}
 \label{tab:baselines}
 \end{table}
 
-Table~\ref{tab:baselines} states the central negative result. Reporting only
-the naive comparison would have supported a headline of ``the agent beats the
-baseline, $p < 10^{-7}$''. That headline would have been an artefact of a
-one-directional sample: $\BaseRate$ of realised moves in the window were upward, so
-any small positive point forecast beats a zero-change baseline mechanically.
-The joint criterion was fixed in advance for exactly this reason.
+Table~\ref{tab:baselines} states the central negative result. Report only the
+naive comparison and the headline writes itself: the agent beats the baseline,
+$p < 10^{-7}$. It would have been an artefact. A fraction $\BaseRate$ of
+realised moves in the window were upward, so any small positive point forecast
+beats a zero-change baseline mechanically, and a headline built on that
+measures the market rather than the forecaster. The joint criterion was fixed
+in advance for exactly this reason.
 
 \paragraph{Intervals are mis-calibrated in a correctable direction.}
 Coverage is $\CovK/\CovN = \CovRate$ (Wilson 95\% CI
@@ -256,8 +257,19 @@ the ledger's own ongoing work is directed.
 
 \paragraph{Probabilities carry no skill.} Mean Brier score is $\BrierModel$
 ($n=\BrierN$) against $\BrierBase$ for a constant forecast at the sample base
-rate of $\BaseRate$, giving a Brier skill score of $\BSS$. The stated probabilities are,
-if anything, slightly worse than knowing how often the market went up.
+rate of $\BaseRate$, giving a Brier skill score of $\BSS$. That figure rounds
+to zero, so it supports no claim of direction: the stated probabilities and a
+constant forecast at the base rate score the same.
+
+The choice of base rate matters more than the skill score does. We use the
+\emph{full-sample} rate, which is a look-ahead a real forecaster would not
+have had and therefore a harder comparison than the agent deserves. The
+released \texttt{reproduce.py} instead walks the rate forward, using only
+rows already resolved, and returns $\BSSWalk$. Both round to nothing. We report
+the harder one here because switching to the friendlier number would be a
+correction in our own favour, which is the bias \S\ref{sec:errors} tests for,
+and we would rather state the discrepancy than resolve it in the direction
+that flatters us.
 
 \paragraph{Power.} These figures overstate the evidence. The assets move in
 correlated blocks: the two foreign-equity funds have a daily return
@@ -313,10 +325,9 @@ underpowered.
 
 \section{Rules are not mechanisms}\label{sec:mechanism}
 
-One recurring pattern is specific enough to name. Repeatedly, the agent
-diagnosed a real problem correctly, wrote the correct rule into its own
-documentation, and then failed to apply it. A document is not an enforcement
-point.
+One recurring pattern is specific enough to name. The agent diagnosed a real
+problem correctly, wrote the correct rule into its own documentation, and then
+did not apply it. Repeatedly. A document is not an enforcement point.
 
 We are deliberate about the count. \textbf{Two} records are clear instances: a
 documented rule existed, no code enforced it, and the omission had a cost.
@@ -351,19 +362,18 @@ clear, two are adjacent and reported as such.}
 \label{tab:mechanism}
 \end{table}
 
-The cost is measurable. In one case a documented interval-recording rule was
-followed on the day it was written, ignored for the next three days, and
-resumed only when someone remembered it; those three days are permanently
-absent from the hypothesis pool they were meant to fill, because the quantity
-cannot be reconstructed after the fact.
+The cost is measurable. A documented interval-recording rule was followed on
+the day it was written, ignored for the next three days, then resumed when
+someone happened to remember it. Those three days are gone. The quantity
+cannot be reconstructed after the fact, so the hypothesis pool they were meant
+to fill is permanently short by three observations.
 
 \paragraph{Why this should generalise.} The pattern does not depend on the
-particular agent or task. It depends on a structural asymmetry: an agent that
-writes its own operating documentation is also the reader of that
-documentation, and reading is not enforced. Every rule that survives only as
-prose is a rule contingent on the agent remembering it at the moment it
-applies, and that is the moment the agent is busy with whatever caused the rule
-to be written in the first place.
+particular agent or task. It depends on a structural asymmetry. An agent that
+writes its own operating documentation is also the only reader of it, and
+nothing enforces reading. A rule that survives only as prose therefore depends
+on the agent remembering it at the moment it applies. That is precisely the
+moment the agent is busy with whatever caused the rule to be written.
 
 \paragraph{A failed exploratory test, and why it is weaker than it looks.}
 We expected errors of \emph{absence} (a missing field, an unenforced rule) to
@@ -397,9 +407,10 @@ than claimed.
 
 \paragraph{The log is self-reported.} It is written by the same agent that
 made the errors. Errors the agent never noticed are absent by construction,
-and no amount of internal analysis can recover them. The \ErrHuman{} human-detected records give a hint of the miss rate but not an estimate: we do not record
-whether the agent \emph{would} have caught what the human caught, so the two
-detectors cannot be compared.
+and no amount of internal analysis recovers them. The \ErrHuman{}
+human-detected records hint at a miss rate without estimating one. We never
+recorded whether the agent \emph{would} have caught what the human caught, so
+the two detectors cannot be compared.
 
 \paragraph{A design that would fix this.} Capture--recapture, standard in
 epidemiology and software defect estimation, requires only that overlap be
@@ -481,15 +492,28 @@ benchmarks keep their usual names. The accepted residual risk is that a fund's
 return series could in principle be matched against public NAV series and the
 instrument identified, which reveals nothing about any person.
 
+\paragraph{Use of AI in preparing this manuscript.} The system under study
+is a language-model agent, and this manuscript was itself drafted with
+language-model assistance under the author's direction. The distinction that
+matters is between the prose and the numbers. Every figure in the text is
+generated from the released data by \texttt{compute\_numbers.py} and checked
+by \texttt{check\_paper.py}, which fails the build if a number is typed by
+hand rather than derived; the audit in \S\ref{sec:limits} describes what
+happened the one time that guard did not yet exist. The author read the data
+behind every claim and is responsible for the content, including the errors.
+We state this because a paper about an agent's operational failures would be a
+poor place to be quiet about it.
+
 \section{Conclusion}
 
 An agent ran a real measurement system for \NumDays{} days and produced
-forecasts with no demonstrated skill. That half of the result is dull, and it
-was pre-registered so that it could not later be reframed as something better.
+forecasts with no demonstrated skill. That half of the result is dull. It was
+also pre-registered, which is the only reason it could not later be reframed
+as something better.
 
 What the process recorded about itself is more useful. Most errors surfaced
 within a day, but \LatGeSeven{} of \ErrN{} took a week or longer and the
-slowest took \LatMax{} days. Over a third repeat an earlier record. The
+slowest took \LatMax{} days. A fraction $\RepRate$ of them repeat an earlier record. The
 corrections the agent made to its own scores show no detectable bias in its own
 favour, though that test is underpowered. The failures that lasted longest were
 not wrong answers. They were rules the agent had written down and then did not

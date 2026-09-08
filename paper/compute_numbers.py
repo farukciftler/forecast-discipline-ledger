@@ -138,6 +138,25 @@ def main():
     reg("BrierModel", st.fmean(br), "{:.4f}"); reg("BrierN", len(br))
     reg("BrierBase", clim, "{:.4f}"); reg("BaseRate", base, "{:.2f}")
     reg("BSS", 1 - st.fmean(br)/clim if clim else 0, "{:+.3f}")
+    # The WALK-FORWARD climatology, matching analysis/reproduce.py: at each row
+    # the base rate uses only rows already resolved. The figure above instead
+    # uses the full-sample rate, which is a look-ahead and therefore a harder
+    # baseline. Both are reported in the paper rather than one being chosen,
+    # because the full-sample number is the one less flattering to the agent
+    # and switching to the other would be a correction in our own favour.
+    rows = sorted([r for r in R if num(r["brier"]) is not None
+                   and r["direction_hit"] in ("0", "1")],
+                  key=lambda r: r["target_date"])
+    llm, cw, ups, seen = [], [], 0, 0
+    for r in rows:
+        out = 1 if r["direction_hit"] == "1" and num(r["p_up"]) >= 0.5 else (
+            0 if r["direction_hit"] == "1" else (1 if num(r["p_up"]) < 0.5 else 0))
+        cw.append(((ups / seen if seen else 0.5) - out) ** 2)
+        llm.append((num(r["p_up"]) - out) ** 2)
+        ups += out
+        seen += 1
+    reg("BSSWalk", 1 - st.fmean(llm) / st.fmean(cw) if cw else 0, "{:+.3f}")
+    print(f"  Brier skill (walk-fwd) = {1 - st.fmean(llm)/st.fmean(cw):+.4f}" if cw else "")
     print(f"  Brier (model)          = {st.fmean(br):.4f}   n = {len(br)}")
     print(f"  Brier (running base)   = {clim:.4f}   base rate = {base:.4f}")
     print(f"  Brier skill score      = {1 - st.fmean(br)/clim:+.4f}" if clim else "")
