@@ -101,3 +101,4 @@ K98,2026-09-08,2026-09-07,1,agent,yes,K17,measurement,cross_check,neutral
 K99,2026-09-08,2026-08-04,35,agent,no,K79,measurement,engine_warning,neutral
 K100,2026-09-08,2026-08-20,19,agent,yes,K97,measurement,cross_check,neutral
 K101,2026-09-08,2026-08-20,19,human,yes,K99,process,human,neutral
+K102,2026-09-08,2026-08-20,19,human,yes,K101,process,human,neutral

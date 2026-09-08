@@ -48,8 +48,8 @@ the loop.
 | Do they beat each baseline taken alone? | Yes: naive 63.0%, drift 64.7%, momentum 75.7% (all p<0.001) |
 | Does `p_up` beat the running base rate (Brier skill score)? | **Barely** — BSS = +0.020 walk-forward; −0.000 against a full-sample base rate |
 | Are the 80% intervals calibrated? | **No, too wide** — 87.7% coverage [84.1–90.5], p=0.0001 |
-| Median days for the agent to detect its own error | **1** (mean 5.8, max 37) |
-| Share of errors that were repeats of a prior recorded error | **40.2%** [31.2–49.9] |
+| Median days for the agent to detect its own error | **1** (mean 5.9, max 37) |
+| Share of errors that were repeats of a prior recorded error | **40.8%** [31.8–50.4] |
 
 Note the gap between rows two and three: the agent clears each baseline
 individually and fails to clear all three simultaneously. That gap is the
@@ -128,7 +128,7 @@ context verifiable. Dates alone identify no one.
 ## Limitations
 
 1. **No control arm.** There is no "same agent without an error log" condition,
-   so the 40.2% repeat rate has nothing to be compared against.
+   so the 40.8% repeat rate has nothing to be compared against.
 2. **Unknown denominator.** The error log contains only *detected* errors.
    Detection latency is measurable; the error *rate* is not. This is classic
    under-ascertainment and it biases every rate-like quantity.
