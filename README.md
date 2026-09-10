@@ -1,6 +1,6 @@
 # Forecast Discipline Ledger
 
-A 40-day (and continuing) record of an LLM agent making dated, scored,
+A 41-day (and continuing) record of an LLM agent making dated, scored,
 pre-registered predictions about seven financial assets — and, separately, a
 structured log of every operational error the agent made while doing it.
 
@@ -39,17 +39,17 @@ the loop.
 - **Not a controlled study.** n=1 agent, n=1 operator, n=1 domain and, so
   far, n=1 volatility regime. See *Limitations*.
 
-## Headline results so far (n=423 scored forecasts, 40 days)
+## Headline results so far (n=441 scored forecasts, 41 days)
 
 | Question | Result |
 |---|---|
 | Does the point forecast reduce error spread vs. knowing only the mean? | **Mostly no** — 3 of 6 assets show ≤0 gain; only one (A4, +14.4%) is clearly positive |
-| Do forecasts beat all three baselines at once? | **No** — 34.4% [29.9–39.3], p=1.0 |
-| Do they beat each baseline taken alone? | Yes: naive 64.1%, drift 65.6%, momentum 75.8% (all p<0.001) |
-| Does `p_up` beat the running base rate (Brier skill score)? | **No** — BSS = −0.004 walk-forward; −0.001 against a full-sample base rate |
-| Are the 80% intervals calibrated? | **No, too wide** — 88.2% coverage [84.8–90.9], p<0.0001 |
+| Do forecasts beat all three baselines at once? | **No** — 35.4% [30.9–40.1], p=1.0 |
+| Do they beat each baseline taken alone? | Yes: naive 65.1%, drift 65.6%, momentum 76.3% (all p<0.001) |
+| Does `p_up` beat the running base rate (Brier skill score)? | **No** — BSS = −0.027 walk-forward; the sign has crossed zero twice |
+| Are the 80% intervals calibrated? | **No, too wide** — 88.4% coverage [85.1–91.1], p<0.0001 |
 | Median days for the agent to detect its own error | **1** (mean 6.2, max 39) |
-| Share of errors that were repeats of a prior recorded error | **40.4%** [31.5–50.0] |
+| Share of errors that were repeats of a prior recorded error | **40.0%** [31.1–49.6] |
 
 Note the gap between rows two and three: the agent clears each baseline
 individually and fails to clear all three simultaneously. That gap is the
@@ -128,7 +128,7 @@ context verifiable. Dates alone identify no one.
 ## Limitations
 
 1. **No control arm.** There is no "same agent without an error log" condition,
-   so the 40.4% repeat rate has nothing to be compared against.
+   so the 40.0% repeat rate has nothing to be compared against.
 2. **Unknown denominator.** The error log contains only *detected* errors.
    Detection latency is measurable; the error *rate* is not. This is classic
    under-ascertainment and it biases every rate-like quantity.
@@ -141,7 +141,7 @@ context verifiable. Dates alone identify no one.
    the pre-registration exists precisely to test whether that self-assessment
    is biased in its own favor — and a *significant* result there is bad news,
    not good.
-5. **n is small.** 40 days, 423 scored rows, ~3 effectively independent
+5. **n is small.** 41 days, 441 scored rows, ~3 effectively independent
    observations per day once the correlation between assets is accounted for.
    Nothing here is statistically settled.
 6. **Two Brier baselines, two answers.** `analysis/reproduce.py` scores `p_up`
