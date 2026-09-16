@@ -47,7 +47,12 @@ def main():
     # ignored the one time it is right.
     #   reproduce.py:        status == "resolved"
     #   compute_numbers.py:  distinct as_of days in forecasts.csv
-    R = [r for r in load("resolutions.csv") if r["status"] == "resolved"]
+    # Third script, same filter. reproduce.py and compute_numbers.py both
+    # exclude dirty substitutions (K113); this one did not, and said the docs
+    # were wrong when the docs were right. A checker that defines its own
+    # population is a checker that cries wolf.
+    R = [r for r in load("resolutions.csv")
+         if r["status"] == "resolved" and r.get("dirty_substitution") != "yes"]
     F = load("forecasts.csv")
     lat = [int(r["latency_days"]) for r in E
            if r["latency_days"].strip().lstrip("-").isdigit()]

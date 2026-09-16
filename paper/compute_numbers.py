@@ -90,7 +90,12 @@ def sci(x, digits=1):
 
 
 def main():
-    R = [r for r in load("resolutions.csv") if r["status"] == "resolved"]
+    # Same exclusion as analysis/reproduce.py. The two scripts have disagreed
+    # once before, over which climatology to use for the Brier score, and the
+    # disagreement was only noticed because someone ran both. Keeping the row
+    # filter identical is cheaper than finding out again.
+    R = [r for r in load("resolutions.csv")
+         if r["status"] == "resolved" and r.get("dirty_substitution") != "yes"]
     F = load("forecasts.csv")
     E = load("error_log.csv")
 

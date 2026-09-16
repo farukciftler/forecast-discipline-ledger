@@ -104,3 +104,14 @@ K101,2026-09-08,2026-08-20,19,human,yes,K99,process,human,neutral
 K102,2026-09-08,2026-08-20,19,human,yes,K101,process,human,neutral
 K103,2026-09-09,2026-08-01,39,agent,no,K5,engine,next_day_observation,favorable
 K104,2026-09-10,2026-09-10,0,agent,no,,model,next_day_observation,neutral
+K105,2026-09-11,2026-09-08,3,agent,no,,measurement,routine_flow,neutral
+K106,2026-09-12,2026-09-12,0,agent,no,,data,cross_check,neutral
+K107,2026-09-12,2026-09-05,7,agent,yes,K79,process,routine_flow,neutral
+K108,2026-09-12,2026-09-04,8,agent,no,K107,model,preregistered_test,favorable
+K109,2026-09-13,2026-09-12,1,agent,yes,K85,data,cross_check,neutral
+K110,2026-09-13,2026-09-12,1,agent,no,K106,measurement,cross_check,neutral
+K111,2026-09-13,2026-09-10,3,human,yes,K81,institution,human,neutral
+K112,2026-09-14,2026-09-13,1,agent,yes,K109,measurement,next_day_observation,neutral
+K113,2026-09-16,2026-09-15,1,human,yes,K98,engine,human,neutral
+K114,2026-09-16,2026-09-15,1,agent,no,K113,measurement,next_day_observation,neutral
+K115,2026-09-16,2026-09-14,2,agent,no,,process,engine_warning,neutral

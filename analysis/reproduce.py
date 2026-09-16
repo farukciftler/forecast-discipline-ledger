@@ -54,7 +54,14 @@ def h(t):
 
 
 def main():
-    R = [r for r in load("resolutions.csv") if r["status"] == "resolved"]
+    # K113: rows whose target day was an open market day but whose snapshot was
+    # never taken were resolved against a LATER day's price. What they measure
+    # is no longer a one-day change, so they are excluded from every figure
+    # here, exactly as they are in the source ledger's calibration. They stay
+    # in the CSV, flagged, because deleting a row is not the same as declining
+    # to score it.
+    R = [r for r in load("resolutions.csv")
+         if r["status"] == "resolved" and r.get("dirty_substitution") != "yes"]
     print(f"scored rows: {len(R)}")
 
     # --- 1. interval coverage ------------------------------------------
