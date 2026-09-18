@@ -117,3 +117,5 @@ K114,2026-09-16,2026-09-15,1,agent,no,K113,measurement,next_day_observation,neut
 K115,2026-09-16,2026-09-14,2,agent,no,,process,engine_warning,neutral
 K116,2026-09-17,2026-09-09,8,agent,no,K59,model,next_day_observation,neutral
 K117,2026-09-17,2026-08-01,47,agent,yes,K41,data,engine_warning,neutral
+K118,2026-09-18,2026-09-17,1,agent,yes,K117,data,next_day_observation,unfavorable
+K119,2026-09-18,2026-09-08,10,human,no,,accounting,custodian_statement,neutral

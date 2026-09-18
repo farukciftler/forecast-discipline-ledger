@@ -1,13 +1,13 @@
 # Findings to date
 
-**Sample:** 47 calendar days · 541 scored forecasts · 118 error records ·
+**Sample:** 48 calendar days · 565 scored forecasts · 120 error records ·
 7 assets · one volatility regime.
 
 Every number below is printed by `analysis/reproduce.py` from `data/` alone.
 Where prose and script disagree, the script is right.
 
 **Read this first:** at ~3 effectively independent observations per day,
-47 days is ~141 independent observations. Nothing here is settled. These are
+48 days is ~144 independent observations. Nothing here is settled. These are
 reported because *reporting negative results early* is the point of the
 design, not because they are conclusive.
 
@@ -22,12 +22,12 @@ would get from knowing only that asset's sample mean:
 
 | id | n | with forecast | mean only | gain |
 |---|---|---|---|---|
-| A1 | 45 | 1.266 pp | 1.269 pp | +0.2% |
-| A2 | 41 | 1.308 pp | 1.312 pp | +0.4% |
-| A3 | 41 | 1.760 pp | 1.784 pp | +1.3% |
-| A4 | 41 | 1.411 pp | 1.575 pp | **+10.4%** |
-| A5 | 38 | 1.391 pp | 1.408 pp | +1.2% |
-| A6 | 42 | 0.087 pp | 0.115 pp | **+24.0%** |
+| A1 | 46 | 1.276 pp | 1.277 pp | +0.1% |
+| A2 | 42 | 1.307 pp | 1.310 pp | +0.2% |
+| A3 | 42 | 1.760 pp | 1.782 pp | +1.2% |
+| A4 | 42 | 1.416 pp | 1.577 pp | **+10.2%** |
+| A5 | 39 | 1.392 pp | 1.404 pp | +0.8% |
+| A6 | 43 | 0.089 pp | 0.115 pp | **+22.6%** |
 
 **This table has flipped since the last release, and the flip deserves more
 caution than the new numbers do.** A week ago three of six were negative and
@@ -59,10 +59,10 @@ leading explanation and it is not yet tested.
 
 | baseline | beaten | rate | CI95 | p (one-sided) |
 |---|---|---|---|---|
-| naive (0% change) | 333/541 | 0.616 | 0.574–0.656 | <0.001 |
-| drift (mean of last 5) | 337/510 | 0.661 | 0.619–0.701 | <0.001 |
-| momentum (last change) | 401/510 | 0.786 | 0.749–0.820 | <0.001 |
-| **all three** | **178/510** | **0.349** | **0.309–0.391** | **1.0** |
+| naive (0% change) | 345/565 | 0.611 | 0.570–0.650 | <0.001 |
+| drift (mean of last 5) | 356/534 | 0.667 | 0.626–0.705 | <0.001 |
+| momentum (last change) | 422/534 | 0.790 | 0.754–0.823 | <0.001 |
+| **all three** | **186/534** | **0.348** | **0.309–0.390** | **1.0** |
 
 Each baseline is beaten individually. **All three together are not** — the
 result is on the wrong side of chance.
@@ -81,8 +81,8 @@ is not a baseline.**
 
 | | value |
 |---|---|
-| coverage | **0.889** (481/541) |
-| CI95 | 0.860 – 0.913 |
+| coverage | **0.890** (503/565) |
+| CI95 | 0.862 – 0.913 |
 | target | 0.80 |
 | p (two-sided exact binomial) | **<0.0001** |
 
@@ -125,12 +125,12 @@ construction.
 
 | | value |
 |---|---|
-| agent mean Brier | 0.2109 |
-| walk-forward climatology Brier | 0.2199 |
-| **Brier skill score** | **+0.041** |
+| agent mean Brier | 0.2121 |
+| walk-forward climatology Brier | 0.2224 |
+| **Brier skill score** | **+0.046** |
 
 The sign has now crossed zero three times, from −0.08 at first release through
-+0.020, −0.027, and back to +0.041. That is the behaviour of a quantity with no signal in it: it
++0.020, −0.027, and back to +0.046. That is the behaviour of a quantity with no signal in it: it
 is not converging on a value, it is wandering around zero as rows accrue. Read
 it as no skill rather than as slight skill in either direction.
 
@@ -140,8 +140,8 @@ base rate, which is a look-ahead and therefore a harder baseline, and gives
 BSS = −0.001. Both round to nothing, but they are not interchangeable and the
 difference is stated rather than resolved by picking the friendlier one.
 
-Directional accuracy over the same rows is **333/492 = 67.7%**
-[63.4–71.7]. Rows where `p_up` was exactly 0.50 are excluded: a probability of
+Directional accuracy over the same rows is **344/515 = 66.8%**
+[62.6–70.7]. Rows where `p_up` was exactly 0.50 are excluded: a probability of
 one half is a refusal to call a direction, not a call, and scoring it as one
 was an engine defect corrected on 2026-09-09. This looks impressive and **is not reported as a headline**,
 because it is measuring the regime: in a window where most days were up,
@@ -156,16 +156,16 @@ Detecting a genuine 52% edge would need ~3,900 independent observations
 
 | | value |
 |---|---|
-| records | 118 in 47 days (≈2.5/day) |
+| records | 120 in 48 days (≈2.5/day) |
 | detection latency | median **1 day**, mean 6.2, max 47 |
-| detected by agent / human | **93 / 25** |
-| repeats of a prior record | **48/118 = 40.7%** [32.2–49.7] |
+| detected by agent / human | **94 / 26** |
+| repeats of a prior record | **49/120 = 40.8%** [32.5–49.8] |
 
-Classes: measurement 34, model 17, data 17, engine 13, process 13,
-verification 11, institution 9, accounting 4.
+Classes: measurement 34, data 18, model 17, engine 13, process 13,
+verification 11, institution 9, accounting 5.
 
 Detection mechanisms: routine flow 32, cross-check 21, human 15, reasoning 14,
-next-day observation 11, custodian statement 8, engine warning 6,
+next-day observation 12, custodian statement 9, engine warning 6,
 pre-registered test 6, adversarial review 3, reconciliation 2.
 
 Six rows are excluded from every figure above. Their target day was an open
@@ -179,7 +179,7 @@ caught the next morning; a long tail is not caught for weeks, and that tail is
 where the interesting records are.
 
 **H9 has its first reading.** Of the corrections with a recorded direction:
-favorable 11, unfavorable 11, neutral 45 (n=67). A significant skew toward
+favorable 11, unfavorable 12, neutral 46 (n=69). A significant skew toward
 *favorable* would be bad news, since it would mean corrections get chosen
 after seeing which way they cut. No skew is detected, which is the outcome the
 test was designed to be able to refuse.
@@ -191,12 +191,12 @@ and it measures a question that is answerable on a much shorter timescale.
 Pre-registered hypotheses H7–H9 need ~120 records — roughly two more months,
 not the ~6 years the forecasting question needs.
 
-**The 40.7% repeat rate is the most decision-relevant number in the dataset**
+**The 40.8% repeat rate is the most decision-relevant number in the dataset**
 for anyone building agent memory: it asks whether writing a failure down
 prevents its recurrence. It currently has nothing to be compared against —
 there is no control arm (README, *Limitations*).
 
-**The repeat rate rose from 28.8% to 40.7% as the log grew.** Writing a
+**The repeat rate rose from 28.8% to 40.8% as the log grew.** Writing a
 failure down is doing less to prevent its recurrence than the first release
 suggested. There is still nothing to compare it against.
 
