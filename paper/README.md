@@ -21,7 +21,7 @@ So it does not have any.
 ```
 data/*.csv
     │
-    ├─ compute_numbers.py --latex ─→ numbers.tex   (68 \newcommand definitions)
+    ├─ compute_numbers.py --latex ─→ numbers.tex   (one \newcommand per quoted figure)
     │                                    │
     └──────────────────────────── main.tex \input{numbers}
                                          │
@@ -149,9 +149,11 @@ Step by step, including how to fetch the files: **[ARXIV.md](ARXIV.md)**.
 
 ## Honest scope
 
-This is an **interim report**. 38 forecast days with roughly three effectively
-independent observations per day is thin for any forecasting claim, and the
-manuscript says so rather than hedging. The forecasting section exists to be
+This is an **interim report**. A few dozen forecast days with fewer than three
+effectively independent observations per day is thin for any forecasting
+claim, and the manuscript says so rather than hedging. The day count and the
+effective-observation figure are on the title page and in §4 of the PDF; they
+are not repeated here because a number typed into this file goes stale. The forecasting section exists to be
 null and to show the null was pre-registered; the contribution is the
 operational error telemetry and the failure mode named in §5.
 

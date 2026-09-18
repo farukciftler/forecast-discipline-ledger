@@ -52,8 +52,8 @@ Operational Failure Telemetry from a Language-Model Agent}
 
 \begin{abstract}
 Agent evaluation is normally episodic: a task is attempted once and scored
-pass or fail. This report covers a different setting. For \NumDays{}
-consecutive days a language-model agent ran a live measurement system with real
+pass or fail. This report covers a different setting. On \NumDays{}
+forecast days between \FirstDay{} and \LastDay{} a language-model agent ran a live measurement system with real
 consequences under human supervision: a personal forecasting ledger that writes
 dated, sealed, pre-registered predictions and scores them against realised
 outcomes. Alongside the forecasts we kept a structured log of every
@@ -64,9 +64,12 @@ days it stayed hidden. We release both datasets.
 The forecasting results are negative and were pre-registered. The agent beats
 each of three baselines individually but beats all three simultaneously in only
 $\BeatAllK/\BeatAllN = \BeatAllRate$ of scored rows ($p = \BeatAllP$,
-one-sided); prediction intervals are too wide ($\CovRate$ coverage against an
-$0.80$ target, exact binomial $p = \CovP$); and the up-move probability scores
-slightly worse than the sample base rate (Brier skill score $\BSS$).
+one-sided), and on only \DayAllK{} of \DayAllN{} days when the forecast day
+rather than the row is the unit. Prediction intervals are too wide
+($\CovRate$ coverage against an $0.80$ target, exact binomial $p = \CovP$).
+The up-move probabilities score about the same as a constant forecast at the
+sample base rate: the Brier skill score is $\BSS$, and resampling whole days
+puts its 95\% interval between $\BSSLo$ and $\BSSHi$.
 
 The error log is the more unusual object. Across \ErrN{} records, detection latency
 is right-skewed. The median is \LatMedian{} day, the mean \LatMean, the
@@ -74,8 +77,11 @@ maximum \LatMax{} days. Of the \ErrN{} records, \RepK{} ($\RepRate$) repeat
 an earlier one. We name and
 illustrate a recurring failure mode of agent-maintained systems: the agent
 writes a correct rule into its own documentation and then does not follow it,
-because \emph{documentation is not a mechanism}. Two clear instances and two
-adjacent ones are described; the clearest went unenforced for \KNineThreeLat{} days.
+because \emph{documentation is not a mechanism}. Two clear instances and three
+adjacent ones are described; the clearest went unenforced for \KNineThreeLat{}
+days. The newest adjacent case runs the other way. A check was built for a
+specific failure and caught it in the ledger, and hours later the same failure
+reached the operator through conversation, a path the check does not read.
 During the audit of this manuscript the pattern recurred once more, inside the
 error log itself, and we report that instance too. Finally, we state the limitation that
 governs all of this: the log is written by the same agent that made the errors,
@@ -122,7 +128,7 @@ attribution.
         interval mis-calibration in a specific and correctable direction
         (\S\ref{sec:forecast}).
   \item A named failure mode, \emph{rules written but not mechanised},
-        illustrated by two clear instances and two adjacent ones, with a
+        illustrated by two clear instances and three adjacent ones, with a
         measured repeat rate (\S\ref{sec:mechanism}).
   \item A design proposal that would make the unobserved error population
         estimable rather than merely acknowledged (\S\ref{sec:limits}).
@@ -248,39 +254,65 @@ reporting order. Findings that are not in the plan are labelled exploratory
 and are not counted as evidence. Rule changes increment a protocol version and
 split the pool.
 
-\paragraph{Scale.} \NumDays{} forecast days (\FirstDay{} to \LastDay),
-\NumWritten{} forecasts written, \NumScored{} scored, \ErrN{} error records. This is an interim report; the ledger
-continues.
+\paragraph{Scale.} \NumDays{} forecast days, \NumWritten{} forecasts
+written, \NumScored{} scored, \ErrN{} error records. The window runs from
+\FirstDay{} to \LastDay, which is \SpanDays{} calendar days, and on
+\SkippedDays{} of them the process was not run at all. Prices for a missed day
+can be fetched afterwards. The news scan cannot, so whatever moved the market
+that day is absent from the record for good. This is an interim report; the
+ledger continues.
+
+\paragraph{Excluded rows.} The resolver looks forward up to six days when a
+target date has no price, which is correct for holidays and for fund prices
+published a day late. It cannot tell a closed market from a day nobody
+recorded, and on the missed day it would have scored two days of movement as
+one. Of the resolved rows, \DirtyN{} took their price this way on an open
+market day. They remain in the released data, flagged, and are excluded from
+every figure below.
 
 \section{Forecast results are null}\label{sec:forecast}
 
 \begin{table}[t]
 \centering
 \small
-\begin{tabular}{lrrr}
+\begin{tabular}{lrrrrr}
 \toprule
-Baseline & beaten & rate & $p$ (one-sided) \\
+Baseline & rows beaten & rate & $p$ (rows) & days won & $p$ (days) \\
 \midrule
-naive             & \BeatNaiveK/\BeatNaiveN & \BeatNaiveRate & $\BeatNaiveP$ \\
-drift             & \BeatDriftK/\BeatDriftN & \BeatDriftRate & $\BeatDriftP$ \\
-momentum          & \BeatMomK/\BeatMomN & \BeatMomRate & $\BeatMomP$ \\
-\textbf{all three simultaneously} & \textbf{\BeatAllK/\BeatAllN} &
-\textbf{\BeatAllRate} & \textbf{\BeatAllP} \\
+naive    & \BeatNaiveK/\BeatNaiveN & \BeatNaiveRate & $\BeatNaiveP$
+         & \DayNaiveK/\DayNaiveN & $\DayNaiveP$ \\
+drift    & \BeatDriftK/\BeatDriftN & \BeatDriftRate & $\BeatDriftP$
+         & \DayDriftK/\DayDriftN & $\DayDriftP$ \\
+momentum & \BeatMomK/\BeatMomN & \BeatMomRate & $\BeatMomP$
+         & \DayMomK/\DayMomN & $\DayMomP$ \\
+\textbf{all three at once} & \textbf{\BeatAllK/\BeatAllN} &
+\textbf{\BeatAllRate} & \textbf{\BeatAllP} & \textbf{\DayAllK/\DayAllN} &
+\textbf{\DayAllP} \\
 \bottomrule
 \end{tabular}
 \caption{Beating any single baseline is easy in a trending sample. Beating all
-three at once is the number that matters, and it fails. Wilson 95\% CI for the
-joint row: $(\BeatAllLo,\,\BeatAllHi)$.}
+three at once is the number that matters, and it fails. The day columns treat
+each forecast day as one observation: a day is won when more than half of its
+rows beat the baseline, and a day split exactly in half drops out. All
+$p$-values are one-sided sign tests. Wilson 95\% CI for the joint row:
+$(\BeatAllLo,\,\BeatAllHi)$.}
 \label{tab:baselines}
 \end{table}
 
 Table~\ref{tab:baselines} states the central negative result. Report only the
 naive comparison and the headline writes itself: the agent beats the baseline,
-$p < 10^{-7}$. It would have been an artefact. A fraction $\BaseRate$ of
+$p = \BeatNaiveP$. It would have been an artefact. A fraction $\BaseRate$ of
 realised moves in the window were upward, so any small positive point forecast
 beats a zero-change baseline mechanically, and a headline built on that
 measures the market rather than the forecaster. The joint criterion was fixed
 in advance for exactly this reason.
+
+The row-level $p$-values treat every row as independent, and they are not:
+one day's forecasts share the same news and move with the same markets. The
+day columns of Table~\ref{tab:baselines} use the day as the unit instead,
+which the pre-registration requires. The conclusion does not move. Every single
+baseline is still beaten, and the joint criterion is met on \DayAllK{} of
+\DayAllN{} days.
 
 \paragraph{Intervals are mis-calibrated in a correctable direction.}
 Coverage is $\CovK/\CovN = \CovRate$ (Wilson 95\% CI
@@ -289,28 +321,34 @@ of coverage this high or higher under a true $0.80$ is $\CovP$. The intervals ar
 the point forecasts, this is a measurable and fixable defect, and it is where
 the ledger's own ongoing work is directed.
 
-\paragraph{Probabilities carry no skill.} Mean Brier score is $\BrierModel$
-($n=\BrierN$) against $\BrierBase$ for a constant forecast at the sample base
-rate of $\BaseRate$, giving a Brier skill score of $\BSS$. That figure rounds
-to zero, so it supports no claim of direction: the stated probabilities and a
-constant forecast at the base rate score the same.
+\paragraph{Probabilities show no demonstrated skill.} Mean Brier score is
+$\BrierModel$ ($n=\BrierN$) against $\BrierBase$ for a constant forecast at the
+sample base rate of $\BaseRate$, a Brier skill score of $\BSS$. When this
+report was first drafted the score was negative. It is positive now, and that
+is not evidence of anything. Resampling whole forecast days gives a 95\%
+interval from $\BSSLo$ to $\BSSHi$, which contains zero with room to spare. A
+score that changes sign between two versions of the same report is measuring
+the sample.
 
-The choice of base rate matters more than the skill score does. We use the
-\emph{full-sample} rate, which is a look-ahead a real forecaster would not
-have had and therefore a harder comparison than the agent deserves. The
-released \texttt{reproduce.py} instead walks the rate forward, using only
-rows already resolved, and returns $\BSSWalk$. Both round to nothing. We report
-the harder one here because switching to the friendlier number would be a
-correction in our own favour, which is the bias \S\ref{sec:errors} tests for,
-and we would rather state the discrepancy than resolve it in the direction
-that flatters us.
+There are two defensible base rates, and we lead with the one the
+pre-registration did not name. The plan specifies a walk-forward rate that
+uses only rows already resolved; \texttt{reproduce.py} computes it and returns
+$\BSSWalk$. The figure above uses the full-sample rate instead, a look-ahead no
+real forecaster would have had, because it gives the lower of the two numbers.
+Picking the friendlier one after seeing both would be a correction in our own
+favour, the bias \S\ref{sec:errors} tests for. The gap between them is much
+smaller than the width of the interval, so the choice changes no conclusion.
 
 \paragraph{Power.} These figures overstate the evidence. The assets move in
 correlated blocks: the two foreign-equity funds have a daily return
 correlation of $\CorrAtwoAthree$, and two precious-metal instruments track the
 same underlying. A Kish-style effective count,
 $k^{2}/\sum_{ij}\rho_{ij}$, gives $\NEff$ effectively independent series per
-day rather than the nominal \NumAssets. With \NumDays{} days, no forecasting conclusion here should be read as more
+day rather than the nominal \NumAssets. Clustering by day, as in
+Table~\ref{tab:baselines}, absorbs this. It does not absorb overlap between
+days: one-week forecasts written on consecutive days share most of their
+target window, so neighbouring days are not independent either.
+With \NumDays{} days, no forecasting conclusion here should be read as more
 than ``not demonstrated''.
 
 \section{Operational failure telemetry}\label{sec:errors}
@@ -342,11 +380,25 @@ caught within a day, a minority survive it for weeks.}
 \paragraph{Two features stand out.} First, latency is skewed: the median is
 \LatMedian{} day while the mean is \LatMean{} and the maximum is \LatMax{}
 days. Routine cross-checking catches most errors within a day; a minority
-survive it for weeks. We stress that the ledger is only \NumDays{} days old,
-so the tail is bounded by the observation window. The maximum says how long one
-error did hide, and nothing about how long an error \emph{can} hide. Second, more than a third of records ($\RepRate$) are repeats
-of an earlier record. The agent returns to failure classes it has already
-documented.
+survive it for weeks. The tail is bounded by the observation window, and
+the longest-hidden record shows how tightly: \LatMaxRecord{} has an event
+date of \LatMaxEvent, and the ledger's first forecast day is \FirstDay. The
+maximum says
+how long one error did hide, and nothing about how long an error \emph{can}
+hide. Second, \RepK{} of \ErrN{} records ($\RepRate$) repeat an earlier record.
+The agent returns to failure classes it has already documented.
+
+\paragraph{The longest-hidden error was usually right.} \LatMaxRecord{} is a
+\LatMaxClass{} error, not an omission. The daily run stored the domestic
+index level at the start of the session, so the stored value was an intraday
+reading, and the day-to-day change built from it ran morning to morning rather
+than close to close. On most days the two agree, because the index has barely
+moved by the time the run starts. They part on days with a large move after
+the reading, and those are the days the field exists for. Each correct day
+made the next one less likely to be checked. It surfaced when a jump alarm
+fired on a real move and verifying the move exposed the reading time. Nothing
+was rewritten backwards: those were the values actually read on those
+mornings, and a separately named previous-close field now sits beside them.
 
 \paragraph{Self-correction appears directionally unbiased.} Of the records
 whose effect on the ledger's own scores was classified, \EffFav{} were
@@ -365,10 +417,11 @@ did not apply it. Repeatedly. A document is not an enforcement point.
 
 We are deliberate about the count. \textbf{Two} records are clear instances: a
 documented rule existed, no code enforced it, and the omission had a cost.
-\textbf{Two} further records are adjacent but weaker. One is a missing
-validation rather than an unfollowed rule; the other is a wrong causal diagnosis
-that was later corrected. We list all four and mark which is which, rather than reporting
-``four instances'' of a category stretched to fit.
+\textbf{Three} further records are adjacent but weaker. One is a missing
+validation rather than an unfollowed rule, one is a wrong causal diagnosis
+that was later corrected, and one is a mechanism that existed and did not
+cover the path the failure took. We list all five and mark which is which,
+rather than reporting ``five instances'' of a category stretched to fit.
 
 \begin{table}[h]
 \centering
@@ -389,10 +442,14 @@ K87 & adjacent & 1 d & A prior diagnosis of a provider anomaly was itself wrong.
 The behavioural rule survived; its stated cause did not. Included because it
 shows a documented \emph{explanation} can be wrong while the \emph{rule} it
 justifies stays useful. \\
+K118 & adjacent & \KOneOneEightLat{} d & A check for index readings taken
+before the session settled was committed to the ledger. Hours later the agent
+quoted such a reading to the operator in conversation. The mechanism existed;
+its scope was the ledger. \\
 \bottomrule
 \end{tabular}
 \caption{Instances of the pattern, with an explicit judgement of fit. Two are
-clear, two are adjacent and reported as such.}
+clear, three are adjacent and reported as such.}
 \label{tab:mechanism}
 \end{table}
 
@@ -401,6 +458,17 @@ the day it was written, ignored for the next three days, then resumed when
 someone happened to remember it. Those three days are gone. The quantity
 cannot be reconstructed after the fact, so the hypothesis pool they were meant
 to fill is permanently short by three observations.
+
+\paragraph{A mechanism has a scope.} K118 belongs in the table because it runs
+the other way. After an intraday index reading had been mistaken for a close,
+the agent built the check the clear cases lacked, and the check worked on the
+ledger. The same afternoon the agent told the operator an index had closed up
+by an amount it had read before the final hour, and the actual close was
+several times larger. The ledger never held the wrong number, so no ledger
+check could have seen it. The record was logged against the operator's
+interest, which is the direction a reader should worry about. Mechanising a
+rule is necessary and still leaves a gap: a mechanism covers the path it is
+wired into, and an agent that talks to people has paths no check reads.
 
 \paragraph{Why this should generalise.} The pattern does not depend on the
 particular agent or task. It depends on a structural asymmetry. An agent that
@@ -418,7 +486,8 @@ $\AbsMean$; the remainder ($n = \OthN$) have median $\OthMedian$ and mean
 $\OthMean$. A Mann--Whitney test gives $z = \MWZ$, two-sided $p = \MWP$. When this
 manuscript was first drafted the same test returned nothing; the separation
 appeared as records accumulated, and it now sits on the conventional side of
-$0.05$ in the predicted direction.
+$0.05$ in the predicted direction, close enough to the line that a few more
+records could move it back.
 
 We report it, and we report why it is not evidence even though it
 succeeded. The hypothesis was formed after seeing the latency distribution.
@@ -432,10 +501,11 @@ $p$ below $0.05$ is least informative: the grouping was chosen to make the
 separation visible. The number above describes this sample. It is not a test,
 and we would have reported it identically had it come out null. The hypothesis
 is now registered prospectively, with the grouping fixed in advance, and will
-be answered by records this manuscript has not seen. The difference lives in the tail:
-the two groups have almost the same median and differ by a factor of nearly
-three in the mean. The hypothesis is registered for prospective testing rather
-than claimed.
+be answered by records this manuscript has not seen. The medians are
+$\AbsMedian$ and $\OthMedian$ days and the means differ by a factor of
+$\AbsOthMeanRatio$, so whatever separation exists is in the tail. The
+longest-hidden record of all does not fit the hypothesis: \LatMaxRecord{} is a
+wrong value, and it hid because it was usually right.
 
 \section{Limitations}\label{sec:limits}
 
@@ -479,7 +549,7 @@ quietly fixed its own would be worth less than one that does not.
 usually stated as ``the log is self-reported''. It is worse than that. The
 agent also chose the error classes, designed the controlled vocabulary those
 classes belong to, and decided which records count as instances of the pattern
-in \S\ref{sec:mechanism}. Section~\ref{sec:mechanism} marks two of four
+in \S\ref{sec:mechanism}. Section~\ref{sec:mechanism} marks three of five
 instances as merely adjacent for this reason, but the marking is itself the
 agent's judgement. An independent re-classification of the released log would
 be a useful contribution and we have not done one.
@@ -493,9 +563,7 @@ was introduced after \VocabFreezeN{} records had accumulated; those were mapped 
 it \emph{after} the data was visible. The released log therefore distinguishes
 an exploratory pool from a confirmatory pool beginning at the record where the
 vocabulary was fixed. Tests intended as evidence use the confirmatory pool
-only, which currently holds \ConfirmN{} records.%
-\footnote{This count is not yet generated; it is fixed by the record at which
-the vocabulary was frozen and moves only as new records accrue.}
+only, which currently holds \ConfirmN{} records.
 
 \section{Data availability}
 
@@ -540,7 +608,7 @@ poor place to be quiet about it.
 
 \section{Conclusion}
 
-An agent ran a real measurement system for \NumDays{} days and produced
+An agent ran a real measurement system on \NumDays{} days and produced
 forecasts with no demonstrated skill. That half of the result is dull. It was
 also pre-registered, which is the only reason it could not later be reframed
 as something better.
@@ -549,9 +617,11 @@ What the process recorded about itself is more useful. Most errors surfaced
 within a day, but \LatGeSeven{} of \ErrN{} took a week or longer and the
 slowest took \LatMax{} days. A fraction $\RepRate$ of them repeat an earlier record. The
 corrections the agent made to its own scores show no detectable bias in its own
-favour, though that test is underpowered. The failures that lasted longest were
-not wrong answers. They were rules the agent had written down and then did not
-apply.
+favour, though that test is underpowered. The longest-hidden failure was a
+field that was right on quiet days and wrong on the days that mattered. Several
+of the other long ones were rules the agent had written down and then did not
+apply, and when a mechanism was finally built for one failure, it guarded the
+ledger and missed the conversation beside it.
 
 Capability benchmarks answer how often an agent is right. An agent that
 maintains something also needs its being wrong to become visible, and the

@@ -105,6 +105,17 @@ def main():
     days = sorted({r['as_of'] for r in F})
     reg("NumDays", len(days)); reg("FirstDay", days[0]); reg("LastDay", days[-1])
     print(f"  distinct forecast days = {len(days)}  ({days[0]} .. {days[-1]})")
+    # Calendar days inside the window with no forecast file. The manuscript
+    # once said "consecutive days"; a skipped weekday made that false without
+    # any number in the text changing.
+    import datetime as _dt
+    d0, d1 = (_dt.date.fromisoformat(d) for d in (days[0], days[-1]))
+    span = (d1 - d0).days + 1
+    reg("SpanDays", span); reg("SkippedDays", span - len(days))
+    print(f"  calendar span          = {span}  days without a forecast = {span - len(days)}")
+    dirty = sum(1 for r in load("resolutions.csv")
+                if r["status"] == "resolved" and r.get("dirty_substitution") == "yes")
+    print(f"  resolved but excluded  = {reg('DirtyN', dirty)}  (price taken forward over an open day)")
     print(f"  assets                 = {reg('NumAssets', len(load('assets.csv')))}")
     print(f"  horizons               = {sorted({r['horizon'] for r in F})}")
 
@@ -135,6 +146,21 @@ def main():
                 reg("BeatAllLo", a, "{:.3f}"); reg("BeatAllHi", b, "{:.3f}")
             print(f"  beat {lab:10s} = {w}/{len(v)} = {w/len(v):.4f}  CI95 ({a}, {b})  "
                   f"p(one-sided >0.5) = {pv:.4g}")
+            # Day-clustered version (PREREGISTRATION pooling rule 5): rows of
+            # the same day are not independent, so the unit is the forecast
+            # day. A day counts as won when more than half of its rows beat
+            # the baseline; an exact half is a tie and drops out. This mirrors
+            # the ledger engine's own clustered test.
+            per_day = defaultdict(list)
+            for r in v:
+                per_day[r["as_of"]].append(r[col] in ("True", "1"))
+            shares = [sum(x) / len(x) for x in per_day.values()]
+            dw = sum(1 for s in shares if s > 0.5)
+            dn = sum(1 for s in shares if s != 0.5)
+            dp = binom_tail(dw, dn) if dn else 1.0
+            reg(f"Day{tag}K", dw); reg(f"Day{tag}N", dn)
+            reg(f"Day{tag}P", "1.0" if dp > 0.99 else (sci(dp) if dp < 0.001 else f"{dp:.3f}"))
+            print(f"    day-clustered        = {dw}/{dn} days won  p(one-sided) = {dp:.4g}")
     br = [num(r["brier"]) for r in R if num(r["brier"]) is not None]
     up = [1 if num(r["actual_pct"]) and num(r["actual_pct"]) > 0 else 0
           for r in R if num(r["brier"]) is not None]
@@ -143,6 +169,32 @@ def main():
     reg("BrierModel", st.fmean(br), "{:.4f}"); reg("BrierN", len(br))
     reg("BrierBase", clim, "{:.4f}"); reg("BaseRate", base, "{:.2f}")
     reg("BSS", 1 - st.fmean(br)/clim if clim else 0, "{:+.3f}")
+
+    # Uncertainty on the BSS, resampling whole forecast days (rows of one day
+    # are not independent). Fixed seed so numbers.tex stays byte-stable and
+    # check_paper.py can compare it. Descriptive, not a pre-registered test.
+    import random
+    by_day = defaultdict(list)
+    for r in R:
+        b = num(r["brier"])
+        if b is not None:
+            a = num(r["actual_pct"])
+            by_day[r["as_of"]].append((b, 1 if a and a > 0 else 0))
+    keys = sorted(by_day)
+    rng = random.Random(20260801)
+    boot = []
+    for _ in range(2000):
+        rows_b = [x for k in (rng.choice(keys) for _ in keys) for x in by_day[k]]
+        bb = sum(x[1] for x in rows_b) / len(rows_b)
+        cl = sum((bb - x[1]) ** 2 for x in rows_b) / len(rows_b)
+        if cl:
+            boot.append(1 - st.fmean(x[0] for x in rows_b) / cl)
+    boot.sort()
+    reg("BSSLo", boot[int(0.025 * len(boot))], "{:+.3f}")
+    reg("BSSHi", boot[int(0.975 * len(boot)) - 1], "{:+.3f}")
+    print(f"  BSS day-block bootstrap CI95 = ({boot[int(0.025*len(boot))]:+.3f}, "
+          f"{boot[int(0.975*len(boot))-1]:+.3f})  reps = {len(boot)}")
+
     # The WALK-FORWARD climatology, matching analysis/reproduce.py: at each row
     # the base rate uses only rows already resolved. The figure above instead
     # uses the full-sample rate, which is a look-ahead and therefore a harder
@@ -180,6 +232,13 @@ def main():
     reg("ErrAgentShare", who["agent"]/len(E), "{:.3f}")
     reg("LatMedian", st.median(lat), "{:.0f}"); reg("LatMean", st.fmean(lat), "{:.1f}")
     reg("LatMax", max(lat))
+    # Which record holds the maximum, and when its error began. Emitted as
+    # values rather than asserted in prose, so the claim moves with the data.
+    top = max(E, key=lambda r: int(r["latency_days"] or 0))
+    reg("LatMaxRecord", top["record_id"]); reg("LatMaxEvent", top["event_date"])
+    reg("LatMaxClass", top["class_k"])
+    print(f"  longest-hidden record  = {top['record_id']} ({top['class_k']}), "
+          f"event {top['event_date']}, logged {top['logged_date']}")
     print(f"  records                = {len(E)}")
     print(f"  detected by            = {dict(who)}   "
           f"agent share = {who['agent']/len(E):.3f}")
@@ -233,6 +292,9 @@ def main():
     reg("OthN", len(y)); reg("OthMedian", st.median(y), "{:.1f}")
     reg("OthMean", st.fmean(y), "{:.1f}")
     reg("MWZ", z, "{:.2f}"); reg("MWP", p, "{:.2f}")
+    # The prose once said "a factor of nearly three in the mean"; the ratio
+    # drifted below two and the sentence did not. Generated now.
+    reg("AbsOthMeanRatio", st.fmean(x) / st.fmean(y), "{:.1f}")
     print(f"  Mann-Whitney U = {U:.0f}  z = {z:.2f}  two-sided p = {p:.4f}")
     print("  EXPLORATORY and NOT SUPPORTED. Reported because it was run.")
 
@@ -253,6 +315,9 @@ def main():
     k91 = next((r for r in E if r["record_id"] == "K91"), None)
     if k91:
         print(f"  K91 latency            = {reg('KNineOneLat', k91['latency_days'])}")
+    k118 = next((r for r in E if r["record_id"] == "K118"), None)
+    if k118:
+        print(f"  K118 latency           = {reg('KOneOneEightLat', k118['latency_days'])}")
     FREEZE = 78   # the record at which the controlled vocabulary was fixed
     conf = [r for r in E if (rid(r) or 0) >= FREEZE]
     print(f"  confirmatory pool (K{FREEZE}+) = {reg('ConfirmN', len(conf))}")
