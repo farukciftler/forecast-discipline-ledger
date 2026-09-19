@@ -1,6 +1,6 @@
 # Forecast Discipline Ledger
 
-A 48-day (and continuing) record of an LLM agent making dated, scored,
+A 49-day (and continuing) record of an LLM agent making dated, scored,
 pre-registered predictions about seven financial assets — and, separately, a
 structured log of every operational error the agent made while doing it.
 
@@ -48,8 +48,8 @@ the loop.
 | Do they beat each baseline taken alone? | Yes: naive 61.1%, drift 66.7%, momentum 79.0% (all p<0.001) |
 | Does `p_up` beat the running base rate (Brier skill score)? | **No** — BSS = +0.046 walk-forward; the sign has crossed zero three times |
 | Are the 80% intervals calibrated? | **No, too wide** — 89.0% coverage [86.2–91.3], p<0.0001 |
-| Median days for the agent to detect its own error | **1** (mean 6.2, max 47) |
-| Share of errors that were repeats of a prior recorded error | **40.8%** [32.5–49.8] |
+| Median days for the agent to detect its own error | **1** (mean 6.1, max 47) |
+| Share of errors that were repeats of a prior recorded error | **41.3%** [32.9–50.2] |
 
 Note the gap between rows two and three: the agent clears each baseline
 individually and fails to clear all three simultaneously. That gap is the
@@ -128,7 +128,7 @@ context verifiable. Dates alone identify no one.
 ## Limitations
 
 1. **No control arm.** There is no "same agent without an error log" condition,
-   so the 40.8% repeat rate has nothing to be compared against.
+   so the 41.3% repeat rate has nothing to be compared against.
 2. **Unknown denominator.** The error log contains only *detected* errors.
    Detection latency is measurable; the error *rate* is not. This is classic
    under-ascertainment and it biases every rate-like quantity.

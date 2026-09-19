@@ -1,6 +1,6 @@
 # Findings to date
 
-**Sample:** 48 calendar days · 565 scored forecasts · 120 error records ·
+**Sample:** 49 calendar days · 565 scored forecasts · 121 error records ·
 7 assets · one volatility regime.
 
 Every number below is printed by `analysis/reproduce.py` from `data/` alone.
@@ -156,10 +156,10 @@ Detecting a genuine 52% edge would need ~3,900 independent observations
 
 | | value |
 |---|---|
-| records | 120 in 48 days (≈2.5/day) |
-| detection latency | median **1 day**, mean 6.2, max 47 |
+| records | 121 in 49 days (≈2.5/day) |
+| detection latency | median **1 day**, mean 6.1, max 47 |
 | detected by agent / human | **94 / 26** |
-| repeats of a prior record | **49/120 = 40.8%** [32.5–49.8] |
+| repeats of a prior record | **50/121 = 41.3%** [32.9–50.2] |
 
 Classes: measurement 34, data 18, model 17, engine 13, process 13,
 verification 11, institution 9, accounting 5.
@@ -191,12 +191,12 @@ and it measures a question that is answerable on a much shorter timescale.
 Pre-registered hypotheses H7–H9 need ~120 records — roughly two more months,
 not the ~6 years the forecasting question needs.
 
-**The 40.8% repeat rate is the most decision-relevant number in the dataset**
+**The 41.3% repeat rate is the most decision-relevant number in the dataset**
 for anyone building agent memory: it asks whether writing a failure down
 prevents its recurrence. It currently has nothing to be compared against —
 there is no control arm (README, *Limitations*).
 
-**The repeat rate rose from 28.8% to 40.8% as the log grew.** Writing a
+**The repeat rate rose from 28.8% to 41.3% as the log grew.** Writing a
 failure down is doing less to prevent its recurrence than the first release
 suggested. There is still nothing to compare it against.
 

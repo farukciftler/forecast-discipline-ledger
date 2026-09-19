@@ -119,3 +119,4 @@ K116,2026-09-17,2026-09-09,8,agent,no,K59,model,next_day_observation,neutral
 K117,2026-09-17,2026-08-01,47,agent,yes,K41,data,engine_warning,neutral
 K118,2026-09-18,2026-09-17,1,agent,yes,K117,data,next_day_observation,unfavorable
 K119,2026-09-18,2026-09-08,10,human,no,,accounting,custodian_statement,neutral
+K120,2026-09-19,2026-09-19,0,agent,yes,K73,model,adversarial_review,neutral
