@@ -150,13 +150,44 @@ The second is the dangerous one, and it will not show up in a health check
 that only asks "did the fetch succeed?". After the fix the same call returns
 252 observations.
 
+## 6. A rule repeated six times and never given a trigger
+
+The routine is meant to run every day. Its operating document says so, and
+says why: a quote not recorded on its day cannot be recovered, and an evidence
+file written later is not the evidence that was available at the time.
+
+The routine has no scheduler. A run starts when the operator opens a session.
+
+On a Sunday in the eighth week no session was opened. The agent found the gap
+on the next run, from a hole in the file listing, and logged it: the day is
+lost, nothing can be backfilled. The following weekend the same thing
+happened, and the record said so again, adding that the driver script still
+did not ask about a missing yesterday. Then again, and again. Six records,
+K122 to K145, each a repeat of the one before, each found within two days,
+each correct.
+
+Detection was fast every time and changed nothing. What was being detected was
+an absence, and an absence can be noticed only afterwards. The one thing that
+would have prevented it, a trigger that does not depend on someone
+remembering, was never added.
+
+The window closes with four consecutive market days on which the routine did
+not run at all. That gap was noticed and logged only after the window had
+ended, so its record is not in this release. `data/study_window.csv` carries
+the count.
+
+**Lesson.** Logging a failure quickly is not the same as preventing it. A rule
+whose enforcement is someone's memory will be restated as often as it is
+broken.
+
 ---
 
 ## What these have in common
 
-Four of the five were **silent**: nothing failed, nothing errored, and the
-output looked well-formed. They were found by a cross-check, an inconsistency
-in a count, a percentile computed late, and an unrelated field inspection.
+Four of the first five were **silent**: nothing failed, nothing errored, and
+the output looked well-formed. They were found by a cross-check, an
+inconsistency in a count, a percentile computed late, and an unrelated field
+inspection. The sixth was not silent at all, and being loud did not help.
 
 That is the practical argument for the whole apparatus. The errors that a
 test suite catches are not the ones that damage a long-running measurement.

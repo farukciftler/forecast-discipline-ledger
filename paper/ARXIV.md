@@ -3,6 +3,19 @@
 Everything below assumes you are the submitting author. Nothing here needs a
 LaTeX installation.
 
+**What arXiv accepts.** Its policy is that articles are *complete final
+drafts*, self-contained, in a form a conventional journal could referee. A
+first version of this manuscript described itself as an interim report on its
+title page, in its body and in the Comments field, and was returned for that
+reason. The manuscript now reports a closed study window, and
+`analysis/check_docs.py` fails the build if the documents call the release
+unfinished. Keep the Comments field to the facts below.
+
+**If a previous submission was declined:** start a new submission with the
+revised paper. Do not contact moderators directly; replies go through the
+support ticket you were sent, and an appeal is only for a decision you believe
+was wrong, not for a paper you have since changed.
+
 ---
 
 ## 0. Get the files
@@ -75,7 +88,7 @@ No `.aux`, `.log`, `.out`. CI checks for those too.
 | Title | copy from the compiled PDF |
 | Authors | `Ciftler, Abdullah Faruk` |
 | Abstract | copy from the PDF, **plain text** |
-| Comments | e.g. `Interim report. Data and code: https://doi.org/10.5281/zenodo.22643370` |
+| Comments | `Data and code: https://doi.org/10.5281/zenodo.22643370` (add page and table counts from the compiled PDF) |
 | ACM class | `D.2.5` (Testing and Debugging), optional |
 
 ### The abstract field
@@ -94,10 +107,12 @@ Upload `arxiv-submission.tar.gz` as-is. arXiv unpacks it and runs LaTeX.
 
 arXiv shows you its own build. Do not skip this.
 
-- Does the reference list have **six** entries? Empty means `main.bbl` did not
+- Does the reference list have **ten** entries? Empty means `main.bbl` did not
   make it into the package.
-- Does the title page say `Figures generated <date>, <n> values`? That line is
-  a deliberate staleness check.
+- Does the title page carry the title, author and date and nothing else? No
+  status line belongs there.
+- Do the three tables in the results sections show numbers in every cell? A
+  blank cell means `numbers.tex` did not travel with `main.tex`.
 - Any `??` in the text means an unresolved cross-reference.
 
 If it looks right: **Submit**.
@@ -120,21 +135,18 @@ If it looks right: **Submit**.
 
 ---
 
-## 6. Updating later
+## 6. Replacing a version
 
-Upload a new source package on the abstract page: **Replace**. It becomes `v2`
-in minutes; the identifier does not change and endorsement is not needed again.
+Upload a new source package on the abstract page: **Replace**. It becomes `v2`;
+the identifier does not change and endorsement is not needed again.
 
-Regenerate first, or the new version ships stale numbers:
+Replace a version to correct an error, not to extend the study. The paper
+analyses a frozen window and its numbers are deterministic:
 
 ```bash
 python3 paper/compute_numbers.py --latex
 python3 paper/check_paper.py     # must exit 0
 ```
 
-Then push, let CI build, and download the new `arxiv-submission.tar.gz`.
-
-**Note on versions.** Strengthening a claim between `v1` and `v2` is normal.
-Retracting one is a permanent public record. This paper's central claim rests
-on two clear instances today; if you would rather it rested on more, the honest
-move is to wait rather than to publish and walk back.
+A later window is a new study with its own data release and, if it is written
+up, its own paper.

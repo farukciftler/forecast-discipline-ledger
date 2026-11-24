@@ -1,11 +1,23 @@
 #!/usr/bin/env python3
 """Every number that appears in the paper, computed from ../data/*.csv.
 
-NB: this file must not be called `numbers.py` — that shadows the standard
+NB: this file must not be called `numbers.py` -- that shadows the standard
 library module `numbers`, which `decimal` (and therefore `statistics`) imports.
 
 Standard library only. Run from the repository root or from paper/.
 Output is deliberately plain text so it can be diffed against the manuscript.
+
+Pools follow PREREGISTRATION.md, not convenience:
+
+  * rows from different protocol versions are never pooled (pooling rule 1);
+  * one-month outputs are projections and enter no skill claim (H5/H6);
+  * unresolved rows and flagged substitutions enter no test (rules 2 and 3).
+
+The PRIMARY pool is therefore: resolved, not a flagged substitution, forecast
+horizons only (1d, 1w), latest protocol version. An earlier draft pooled
+everything and quoted the result as the headline. That contradicted the
+pre-registration the same draft cited, and nobody noticed because the script
+and the document were never checked against each other.
 """
 import argparse, csv, math, os, statistics as st
 from collections import Counter, defaultdict
@@ -15,14 +27,17 @@ from collections import Counter, defaultdict
 # that came from the data: that is the failure mode this paper is about.
 MACROS = {}
 
-
-def reg(name, value, fmt="{}"):
-    """Record a value for \newcommand emission and return it unchanged."""
-    MACROS[name] = fmt.format(value)
-    return value
-
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, "..", "data")
+
+WORD = {1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five", 6: "Six"}
+
+
+def reg(name, value, fmt="{}"):
+    """Record a value for \\newcommand emission and return it unchanged."""
+    assert name.isalpha(), f"macro names are letters only: {name}"
+    MACROS[name] = fmt.format(value)
+    return value
 
 
 def load(n):
@@ -47,9 +62,28 @@ def wilson(k, n, z=1.96):
     return round((c - s) / d, 4), round((c + s) / d, 4)
 
 
+def log_pmf(i, n, p):
+    """log P(X = i), X ~ Bin(n, p). Log-space: math.comb overflows a float
+    once n passes about a thousand, and the pool is now larger than that."""
+    return (math.lgamma(n + 1) - math.lgamma(i + 1) - math.lgamma(n - i + 1)
+            + i * math.log(p) + (n - i) * math.log(1 - p))
+
+
 def binom_tail(k, n, p=0.5):
-    """P(X >= k). Exact, no scipy."""
-    return sum(math.comb(n, i) * p ** i * (1 - p) ** (n - i) for i in range(k, n + 1))
+    """P(X >= k). Exact up to floating point, no scipy."""
+    if n == 0:
+        return 1.0
+    return min(1.0, sum(math.exp(log_pmf(i, n, p)) for i in range(k, n + 1)))
+
+
+def binom_two_sided(k, n, p):
+    """Exact two-sided binomial: total mass of outcomes no likelier than k."""
+    if n == 0:
+        return 1.0
+    obs = log_pmf(k, n, p)
+    return min(1.0, sum(math.exp(lp) for lp in
+                        (log_pmf(i, n, p) for i in range(n + 1))
+                        if lp <= obs + 1e-9))
 
 
 def mannwhitney(x, y):
@@ -76,6 +110,25 @@ def mannwhitney(x, y):
     return U, z, math.erfc(abs(z) / math.sqrt(2))
 
 
+def spearman(x, y):
+    """Spearman rank correlation with average ranks for ties."""
+    def rank(v):
+        order = sorted(range(len(v)), key=lambda i: v[i])
+        rk, i = [0.0] * len(v), 0
+        while i < len(order):
+            j = i
+            while j + 1 < len(order) and v[order[j + 1]] == v[order[i]]:
+                j += 1
+            for k in range(i, j + 1):
+                rk[order[k]] = (i + j) / 2 + 1
+            i = j + 1
+        return rk
+    rx, ry = rank(x), rank(y)
+    mx, my = st.fmean(rx), st.fmean(ry)
+    den = math.sqrt(sum((a - mx) ** 2 for a in rx) * sum((b - my) ** 2 for b in ry))
+    return sum((a - mx) * (b - my) for a, b in zip(rx, ry)) / den if den else 0.0
+
+
 def h(t):
     print("\n" + t + "\n" + "-" * len(t))
 
@@ -89,67 +142,183 @@ def sci(x, digits=1):
     return f"{m:.{digits}f}\\times10^{{{e}}}"
 
 
+def fmt_p(p):
+    """A p-value as the manuscript prints it."""
+    return sci(p) if p < 0.001 else f"{p:.3f}"
+
+
+def is_beat(r, col):
+    return r[col] in ("True", "1")
+
+
+def has_beat(r, col):
+    return r[col] in ("True", "False", "0", "1")
+
+
+def beat_all(rows):
+    v = [r for r in rows if has_beat(r, "beat_all_three")]
+    return sum(1 for r in v if is_beat(r, "beat_all_three")), len(v)
+
+
+def coverage(rows):
+    v = [r for r in rows if r["in_band"] in ("0", "1")]
+    return sum(1 for r in v if r["in_band"] == "1"), len(v)
+
+
+def ratio(k, n):
+    return (f"{k}/{n}", f"{k / n:.3f}") if n else ("n/a", "n/a")
+
+
 def main():
-    # Same exclusion as analysis/reproduce.py. The two scripts have disagreed
-    # once before, over which climatology to use for the Brier score, and the
-    # disagreement was only noticed because someone ran both. Keeping the row
-    # filter identical is cheaper than finding out again.
-    R = [r for r in load("resolutions.csv")
-         if r["status"] == "resolved" and r.get("dirty_substitution") != "yes"]
+    RES = load("resolutions.csv")
     F = load("forecasts.csv")
     E = load("error_log.csv")
+    W = load("study_window.csv")[0]
 
-    h("S1  Setup")
-    print(f"  forecasts written      = {reg('NumWritten', len(F))}")
-    print(f"  forecasts scored       = {reg('NumScored', len(R))}")
-    days = sorted({r['as_of'] for r in F})
+    # Same exclusion as analysis/reproduce.py and analysis/check_docs.py. The
+    # three scripts have disagreed before; keeping one definition is cheaper
+    # than finding out again.
+    R = [r for r in RES
+         if r["status"] == "resolved" and r.get("dirty_substitution") != "yes"]
+    latest = max(r["protocol_version"] for r in R if r["protocol_version"])
+    FC = [r for r in R if r["horizon_kind"] == "forecast"]
+    P = [r for r in FC if r["protocol_version"] == latest]
+
+    h("S1  Study window and pools")
+    days = sorted({r["as_of"] for r in F})
+    reg("WindowStart", W["window_start"]); reg("WindowEnd", W["window_end"])
+    reg("WindowCalDays", W["calendar_days"]); reg("OpenDays", W["market_open_days"])
+    reg("OpenCovered", W["open_days_with_forecast"])
+    reg("OpenMissed", W["open_days_missed"])
+    reg("MissRunMax", W["longest_missed_run"])
+    reg("MissRunEnd", W["missed_run_at_window_end"])
+    reg("ClosedCovered", W["closed_days_with_forecast"])
     reg("NumDays", len(days)); reg("FirstDay", days[0]); reg("LastDay", days[-1])
-    print(f"  distinct forecast days = {len(days)}  ({days[0]} .. {days[-1]})")
-    print(f"  assets                 = {reg('NumAssets', len(load('assets.csv')))}")
-    print(f"  horizons               = {sorted({r['horizon'] for r in F})}")
+    reg("NumWritten", len(F))
+    reg("NumAssets", len(load("assets.csv")))
+    reg("NumForecastAssets", len({r["asset_id"] for r in F}))
+    reg("NumModels", len({r["model_id"] for r in F if r["model_id"]}))
+    reg("NumProtocols", len({r["protocol_version"] for r in R if r["protocol_version"]}))
+    reg("LatestProtocol", latest)
+    reg("NumResolved", sum(1 for r in RES if r["status"] == "resolved"))
+    reg("NumDirty", sum(1 for r in RES if r["status"] == "resolved"
+                        and r.get("dirty_substitution") == "yes"))
+    reg("NumScoredAll", len(R))
+    reg("NumNotScored", len(F) - len(R))
+    reg("NumProjection", len(R) - len(FC))
+    reg("NumEarlierProto", len(FC) - len(P))
+    reg("PrimaryN", len(P))
+    reg("PrimaryDays", len({r["as_of"] for r in P}))
+    print(f"  window                 = {W['window_start']} .. {W['window_end']} "
+          f"({W['calendar_days']} calendar days)")
+    print(f"  market-open days       = {W['market_open_days']}, covered "
+          f"{W['open_days_with_forecast']}, missed {W['open_days_missed']} "
+          f"(longest run {W['longest_missed_run']}, at window end "
+          f"{W['missed_run_at_window_end']})")
+    print(f"  forecast days          = {len(days)}  ({days[0]} .. {days[-1]})")
+    print(f"  forecasts written      = {len(F)}")
+    print(f"  resolved / flagged     = {MACROS['NumResolved']} / {MACROS['NumDirty']}")
+    print(f"  scored (all pools)     = {len(R)}  = projections {len(R) - len(FC)}"
+          f" + earlier protocols {len(FC) - len(P)} + PRIMARY {len(P)}")
+    print(f"  primary pool           = protocol v{latest}, horizons 1d+1w, "
+          f"{MACROS['PrimaryDays']} forecast days")
 
-    h("S3  Forecast results (negative)")
-    inb = [r for r in R if r["in_band"] in ("0", "1")]
-    k = sum(1 for r in inb if r["in_band"] == "1")
-    lo, hi = wilson(k, len(inb))
-    # two-sided exact binomial against 0.80
-    p_lo = sum(math.comb(len(inb), i) * .8 ** i * .2 ** (len(inb) - i) for i in range(k, len(inb) + 1))
-    reg("CovK", k); reg("CovN", len(inb)); reg("CovRate", k/len(inb), "{:.3f}")
+    h("S2  H2 - interval coverage (primary pool)")
+    k, n = coverage(P)
+    lo, hi = wilson(k, n)
+    p2 = binom_two_sided(k, n, 0.80)
+    reg("CovK", k); reg("CovN", n); reg("CovRate", k / n, "{:.3f}")
     reg("CovLo", lo, "{:.3f}"); reg("CovHi", hi, "{:.3f}")
-    reg("CovP", sci(p_lo))
-    print(f"  interval coverage      = {k}/{len(inb)} = {k/len(inb):.4f}  CI95 ({lo}, {hi})")
-    print(f"    exact binomial p(coverage >= observed | true=0.80) = {p_lo:.2e}")
-    for col, lab in (("beat_naive", "naive"), ("beat_drift", "drift"),
-                     ("beat_momentum", "momentum"), ("beat_all_three", "ALL THREE")):
-        v = [r for r in R if r[col] in ("True", "False", "0", "1")]
-        w = sum(1 for r in v if r[col] in ("True", "1"))
-        if v:
-            a, b = wilson(w, len(v))
-            pv = binom_tail(w, len(v))
-            tag = {"naive": "Naive", "drift": "Drift", "momentum": "Mom",
-                   "ALL THREE": "All"}[lab]
-            reg(f"Beat{tag}K", w); reg(f"Beat{tag}N", len(v))
-            reg(f"Beat{tag}Rate", w/len(v), "{:.3f}")
-            reg(f"Beat{tag}P", "1.0" if pv > 0.99 else sci(pv))
-            if tag == "All":
-                reg("BeatAllLo", a, "{:.3f}"); reg("BeatAllHi", b, "{:.3f}")
-            print(f"  beat {lab:10s} = {w}/{len(v)} = {w/len(v):.4f}  CI95 ({a}, {b})  "
-                  f"p(one-sided >0.5) = {pv:.4g}")
-    br = [num(r["brier"]) for r in R if num(r["brier"]) is not None]
-    up = [1 if num(r["actual_pct"]) and num(r["actual_pct"]) > 0 else 0
-          for r in R if num(r["brier"]) is not None]
-    base = sum(up) / len(up) if up else 0
-    clim = sum((base - u) ** 2 for u in up) / len(up) if up else 0
+    reg("CovP", fmt_p(p2))
+    print(f"  coverage               = {k}/{n} = {k/n:.4f}  CI95 ({lo}, {hi})")
+    print(f"    exact two-sided binomial vs 0.80: p = {p2:.3g}")
+
+    # H14-d: the managed-crawl asset is reported separately as well as inside
+    # the headline. An interval that is never breached carries no information.
+    fx = {a["asset_id"] for a in load("assets.csv") if a["asset_class"] == "fx_deposit"}
+    kx, nx = coverage([r for r in P if r["asset_id"] not in fx])
+    kf, nf = coverage([r for r in P if r["asset_id"] in fx])
+    reg("CovExFxK", kx); reg("CovExFxN", nx); reg("CovExFxRate", kx / nx, "{:.3f}")
+    reg("CovFxK", kf); reg("CovFxN", nf)
+    print(f"    excluding the managed-crawl asset: {kx}/{nx} = {kx/nx:.4f};"
+          f" that asset alone: {kf}/{nf}")
+
+    h("S2b  H14 - shadow interval on matched 1-day rows (never scored)")
+    fshadow = {(r["as_of"], r["asset_id"], r["horizon"]):
+               (num(r["band_shadow_low"]), num(r["band_shadow_high"])) for r in F
+               if num(r["band_shadow_low"]) is not None}
+    m = [(r, fshadow[(r["as_of"], r["asset_id"], r["horizon"])]) for r in P
+         if r["horizon"] == "1d" and r["in_band"] in ("0", "1")
+         and (r["as_of"], r["asset_id"], r["horizon"]) in fshadow
+         and num(r["actual_pct"]) is not None]
+    sh_in = sum(1 for r, (lo_, hi_) in m if lo_ <= num(r["actual_pct"]) <= hi_)
+    st_in = sum(1 for r, _ in m if r["in_band"] == "1")
+    wr_ = st.fmean((hi_ - lo_) / (num(r["high_pct"]) - num(r["low_pct"]))
+                   for r, (lo_, hi_) in m if num(r["high_pct"]) > num(r["low_pct"]))
+    reg("ShadowN", len(m)); reg("ShadowCov", sh_in / len(m), "{:.3f}")
+    reg("ShadowStandingCov", st_in / len(m), "{:.3f}")
+    reg("ShadowWidthRatio", wr_, "{:.2f}")
+    print(f"  matched rows           = {len(m)}")
+    print(f"  shadow / standing      = {sh_in/len(m):.4f} / {st_in/len(m):.4f}"
+          f"   mean width ratio {wr_:.3f}")
+    # H14-b, second condition: has a second volatility regime been observed?
+    a1 = [num(r["return_pct"]) for r in load("returns.csv")
+          if r["asset_id"] == "A1" and num(r["return_pct"]) is not None]
+    gvz = [num(r["value"]) for r in load("market_state.csv") if r["variable"] == "gvz"]
+    reg("AoneMinRet", min(a1), "{:.2f}")
+    reg("GvzAboveThirty", sum(1 for v in gvz if v is not None and v > 30))
+    reg("GvzDays", len(gvz))
+    print(f"  A1 worst daily return  = {min(a1):.2f}%   implied-vol index > 30 on "
+          f"{MACROS['GvzAboveThirty']} of {len(gvz)} recorded days")
+
+    h("S3  H1 - baselines (primary pool), by row and by forecast day")
+    for col, tag in (("beat_naive", "Naive"), ("beat_drift", "Drift"),
+                     ("beat_momentum", "Mom"), ("beat_all_three", "All")):
+        v = [r for r in P if has_beat(r, col)]
+        w = sum(1 for r in v if is_beat(r, col))
+        a, b = wilson(w, len(v))
+        pv = binom_tail(w, len(v))
+        reg(f"Beat{tag}K", w); reg(f"Beat{tag}N", len(v))
+        reg(f"Beat{tag}Rate", w / len(v), "{:.3f}")
+        reg(f"Beat{tag}P", fmt_p(pv))
+        if tag == "All":
+            reg("BeatAllLo", a, "{:.3f}"); reg("BeatAllHi", b, "{:.3f}")
+        # Rows written on the same day are not independent (pooling rule 5).
+        # The day-level sign test gives each forecast day one vote: the day is
+        # won if more than half of its rows beat the baseline. Ties dropped.
+        per = defaultdict(list)
+        for r in v:
+            per[r["as_of"]].append(is_beat(r, col))
+        won = sum(1 for x in per.values() if sum(x) * 2 > len(x))
+        lost = sum(1 for x in per.values() if sum(x) * 2 < len(x))
+        pd = binom_tail(won, won + lost)
+        reg(f"Day{tag}Won", won); reg(f"Day{tag}N", won + lost)
+        reg(f"Day{tag}P", fmt_p(pd))
+        print(f"  beat {tag:5s} rows {w}/{len(v)} = {w/len(v):.4f}  CI95 ({a}, {b})"
+              f"  p = {pv:.3g}   | days {won}/{won + lost}  p = {pd:.3g}")
+
+    h("S3b  H3 - the one pre-registered subgroup (confidence medium/high)")
+    H3 = [r for r in P if r["confidence"] in ("medium", "high")]
+    k3, n3 = beat_all(H3)
+    reg("HThreeN", n3); reg("HThreeK", k3)
+    reg("HThreeRate", (k3 / n3) if n3 else 0, "{:.3f}")
+    print(f"  n = {n3}  beat all three = {k3}  (minimum n is 100)")
+
+    h("S3c  H13-c - up-move probability (primary pool)")
+    br = [num(r["brier"]) for r in P if num(r["brier"]) is not None]
+    up = [1 if (num(r["actual_pct"]) or 0) > 0 else 0
+          for r in P if num(r["brier"]) is not None]
+    base = sum(up) / len(up)
+    clim = sum((base - u) ** 2 for u in up) / len(up)
     reg("BrierModel", st.fmean(br), "{:.4f}"); reg("BrierN", len(br))
     reg("BrierBase", clim, "{:.4f}"); reg("BaseRate", base, "{:.2f}")
-    reg("BSS", 1 - st.fmean(br)/clim if clim else 0, "{:+.3f}")
-    # The WALK-FORWARD climatology, matching analysis/reproduce.py: at each row
-    # the base rate uses only rows already resolved. The figure above instead
-    # uses the full-sample rate, which is a look-ahead and therefore a harder
-    # baseline. Both are reported in the paper rather than one being chosen,
-    # because the full-sample number is the one less flattering to the agent
-    # and switching to the other would be a correction in our own favour.
-    rows = sorted([r for r in R if num(r["brier"]) is not None
+    reg("BSS", 1 - st.fmean(br) / clim, "{:+.3f}")
+    # WALK-FORWARD climatology, matching analysis/reproduce.py: at each row the
+    # base rate uses only rows already resolved. The figure above uses the
+    # full-sample rate, which is a look-ahead and therefore a harder baseline.
+    # Both are reported; choosing the friendlier one would be a correction in
+    # the agent's own favour.
+    rows = sorted([r for r in P if num(r["brier"]) is not None
                    and r["direction_hit"] in ("0", "1")],
                   key=lambda r: r["target_date"])
     llm, cw, ups, seen = [], [], 0, 0
@@ -160,24 +329,69 @@ def main():
         llm.append((num(r["p_up"]) - out) ** 2)
         ups += out
         seen += 1
-    reg("BSSWalk", 1 - st.fmean(llm) / st.fmean(cw) if cw else 0, "{:+.3f}")
-    print(f"  Brier skill (walk-fwd) = {1 - st.fmean(llm)/st.fmean(cw):+.4f}" if cw else "")
-    print(f"  Brier (model)          = {st.fmean(br):.4f}   n = {len(br)}")
-    print(f"  Brier (running base)   = {clim:.4f}   base rate = {base:.4f}")
-    print(f"  Brier skill score      = {1 - st.fmean(br)/clim:+.4f}" if clim else "")
+    reg("BSSWalk", 1 - st.fmean(llm) / st.fmean(cw), "{:+.3f}")
+    print(f"  Brier (agent)          = {st.fmean(br):.4f}   n = {len(br)}")
+    print(f"  Brier (full-sample)    = {clim:.4f}   base rate = {base:.4f}")
+    print(f"  BSS full-sample        = {1 - st.fmean(br)/clim:+.4f}")
+    print(f"  BSS walk-forward       = {1 - st.fmean(llm)/st.fmean(cw):+.4f}")
+    # EXPLORATORY decomposition, reported because the pooled score is positive
+    # and the reason is visible in the data: one asset moves in one direction
+    # by policy, so knowing WHICH asset a row belongs to already beats a pooled
+    # base rate. Against each asset's own base rate that information is gone.
+    Pb = [r for r in P if num(r["brier"]) is not None]
+    outc = lambda r: 1 if (num(r["actual_pct"]) or 0) > 0 else 0
+    fxr = [r for r in Pb if r["asset_id"] in fx]
+    reg("FxN", len(fxr)); reg("FxUp", sum(outc(r) for r in fxr))
+    reg("FxMeanPup", st.fmean(num(r["p_up"]) for r in fxr), "{:.2f}")
+    rest = [r for r in Pb if r["asset_id"] not in fx]
+    b0 = st.fmean(outc(r) for r in rest)
+    reg("BSSExFx", 1 - st.fmean(num(r["brier"]) for r in rest)
+        / st.fmean((b0 - outc(r)) ** 2 for r in rest), "{:+.3f}")
+    reg("BaseRateExFx", b0, "{:.2f}")
+    by = defaultdict(list)
+    for r in Pb:
+        by[r["asset_id"]].append(r)
+    agent = sum(num(r["brier"]) for r in Pb)
+    own = sum((st.fmean(outc(x) for x in v) - outc(r)) ** 2
+              for v in by.values() for r in v)
+    reg("BSSOwnBase", 1 - agent / own, "{:+.3f}")
+    print(f"  managed-crawl asset    = up on {MACROS['FxUp']} of {len(fxr)} scored rows, "
+          f"mean p_up {MACROS['FxMeanPup']}")
+    print(f"  BSS excluding it       = {MACROS['BSSExFx']}  (base rate {b0:.3f})")
+    print(f"  BSS vs own base rates  = {MACROS['BSSOwnBase']}")
 
-    h("S3b  Effective independent observations")
-    per = Counter(r["as_of"] for r in R)
-    reg("RowsPerDay", st.fmean(per.values()), "{:.1f}")
-    print(f"  scored rows / day      = {st.fmean(per.values()):.2f}")
-    print("  assets move in correlated blocks; nominal n overstates power.")
+    h("S3d  Breakdowns that are reported, not pooled")
+    print("  by protocol version (forecast horizons, scored rows):")
+    for v in sorted({r["protocol_version"] for r in FC if r["protocol_version"]}):
+        sub = [r for r in FC if r["protocol_version"] == v]
+        ka, na = beat_all(sub); kc, nc = coverage(sub)
+        t = WORD[int(v)]
+        reg(f"Proto{t}N", len(sub))
+        reg(f"Proto{t}BeatAll", ratio(ka, na)[0]); reg(f"Proto{t}BeatAllRate", ratio(ka, na)[1])
+        reg(f"Proto{t}Cov", ratio(kc, nc)[1])
+        print(f"    v{v}: n={len(sub):4d}  beat all {ratio(ka, na)}  coverage {ratio(kc, nc)[1]}")
+    print("  by model version (all forecasts written; scored rows in primary pool):")
+    for m in sorted({r["model_id"] for r in F if r["model_id"]}):
+        t = m.split("_")[-1]                      # model_A -> A
+        wr_ = [r for r in F if r["model_id"] == m]
+        sub = [r for r in P if r["model_id"] == m]
+        ka, na = beat_all(sub); kc, nc = coverage(sub)
+        reg(f"Model{t}Written", len(wr_))
+        reg(f"Model{t}Days", len({r["as_of"] for r in wr_}))
+        reg(f"Model{t}Scored", len(sub))
+        reg(f"Model{t}BeatAll", ratio(ka, na)[0]); reg(f"Model{t}BeatAllRate", ratio(ka, na)[1])
+        reg(f"Model{t}Cov", ratio(kc, nc)[1])
+        print(f"    {m}: written {len(wr_):4d} on {MACROS[f'Model{t}Days']:>2s} days, "
+              f"primary rows {len(sub):4d}  beat all {ratio(ka, na)}  "
+              f"coverage {ratio(kc, nc)[1]}")
 
     h("S4  Error telemetry")
-    lat = sorted(int(r["latency_days"]) for r in E if r["latency_days"].strip().lstrip("-").isdigit())
+    lat = sorted(int(r["latency_days"]) for r in E
+                 if r["latency_days"].strip().lstrip("-").isdigit())
     who = Counter(r["detected_by"] for r in E)
     rep = sum(1 for r in E if r["is_repeat"] == "yes")
     reg("ErrN", len(E)); reg("ErrAgent", who["agent"]); reg("ErrHuman", who["human"])
-    reg("ErrAgentShare", who["agent"]/len(E), "{:.3f}")
+    reg("ErrAgentShare", who["agent"] / len(E), "{:.3f}")
     reg("LatMedian", st.median(lat), "{:.0f}"); reg("LatMean", st.fmean(lat), "{:.1f}")
     reg("LatMax", max(lat))
     print(f"  records                = {len(E)}")
@@ -188,14 +402,14 @@ def main():
     for q in (0.75, 0.90, 0.95):
         i = int(q * (len(lat) - 1))
         reg({75: "LatPseventyfive", 90: "LatPninety",
-             95: "LatPninetyfive"}[int(q*100)], lat[i])
+             95: "LatPninetyfive"}[int(q * 100)], lat[i])
         print(f"    p{int(q*100)}                  = {lat[i]}")
     reg("LatGeSeven", sum(1 for v in lat if v >= 7))
     reg("LatGeThirty", sum(1 for v in lat if v >= 30))
-    print(f"  latency >= 7 days      = {sum(1 for v in lat if v >= 7)}/{len(lat)}")
-    print(f"  latency >= 30 days     = {sum(1 for v in lat if v >= 30)}/{len(lat)}")
+    print(f"  latency >= 7 days      = {MACROS['LatGeSeven']}/{len(lat)}")
+    print(f"  latency >= 30 days     = {MACROS['LatGeThirty']}/{len(lat)}")
     a, b = wilson(rep, len(E))
-    reg("RepK", rep); reg("RepRate", rep/len(E), "{:.3f}")
+    reg("RepK", rep); reg("RepRate", rep / len(E), "{:.3f}")
     reg("RepLo", a, "{:.3f}"); reg("RepHi", b, "{:.3f}")
     print(f"  repeat of prior record = {rep}/{len(E)} = {rep/len(E):.4f}  CI95 ({a}, {b})")
     cls = Counter(r["class_k"] for r in E if r["class_k"])
@@ -203,40 +417,49 @@ def main():
     print(f"  class                  = {dict(cls.most_common())}")
     print(f"  mechanism              = {dict(mec.most_common())}")
 
+    h("S4a  H7 - does detection latency fall over time?")
+    seq = [int(r["latency_days"]) for r in E
+           if r["latency_days"].strip().lstrip("-").isdigit()]
+    rho_s = spearman(list(range(len(seq))), seq)
+    t_s = rho_s * math.sqrt((len(seq) - 2) / (1 - rho_s ** 2))
+    # one-sided, pre-registered direction: rho < 0. Normal approximation to t.
+    p_s = 0.5 * math.erfc(-t_s / math.sqrt(2))
+    reg("SpearRho", rho_s, "{:+.2f}"); reg("SpearN", len(seq)); reg("SpearP", fmt_p(p_s))
+    print(f"  Spearman rho = {rho_s:+.3f}  n = {len(seq)}  one-sided p(rho<0) = {p_s:.3f}"
+          f"   (minimum n is 120)")
+
     h("S4b  H9 - direction of self-correction")
     eff = Counter(r["score_effect"] for r in E if r["score_effect"])
     f_, u_ = eff.get("favorable", 0), eff.get("unfavorable", 0)
-    print(f"  favorable {f_}  unfavorable {u_}  neutral {eff.get('neutral',0)}  n = {sum(eff.values())}")
     reg("EffFav", f_); reg("EffUnfav", u_); reg("EffNeutral", eff.get("neutral", 0))
-    if f_ + u_:
-        p = 2 * min(binom_tail(max(f_, u_), f_ + u_), 1.0)
-        a, b = wilson(f_, f_ + u_)
-        reg("EffN", f_ + u_); reg("EffFavShare", f_/(f_+u_), "{:.3f}")
-        reg("EffLo", a, "{:.3f}"); reg("EffHi", b, "{:.3f}")
-        reg("EffP", min(p, 1.0), "{:.2f}")
-        print(f"  favorable share        = {f_}/{f_+u_} = {f_/(f_+u_):.4f}  CI95 ({a}, {b})  "
-              f"two-sided p = {min(p,1.0):.4f}")
-        print("  a skew toward 'favorable' would be BAD news; none is detected.")
+    p = min(1.0, 2 * binom_tail(max(f_, u_), f_ + u_))
+    a, b = wilson(f_, f_ + u_)
+    reg("EffN", f_ + u_); reg("EffFavShare", f_ / (f_ + u_), "{:.3f}")
+    reg("EffLo", a, "{:.3f}"); reg("EffHi", b, "{:.3f}")
+    reg("EffP", fmt_p(p))
+    print(f"  favorable {f_}  unfavorable {u_}  neutral {eff.get('neutral', 0)}")
+    print(f"  favorable share        = {f_}/{f_+u_} = {f_/(f_+u_):.4f}  CI95 ({a}, {b})  "
+          f"two-sided p = {p:.4f}   (minimum n is 40)")
 
-    h("S5  Failed exploratory test: absence vs. wrong-value latency")
-    # Pre-specified nothing: this test was formed AFTER looking. Reported as failed.
+    h("S5  Exploratory: absence-like classes vs. the rest (NOT a test)")
     ABSENCE = {"measurement", "process"}
     x = [int(r["latency_days"]) for r in E
          if r["class_k"] in ABSENCE and r["latency_days"].strip().lstrip("-").isdigit()]
     y = [int(r["latency_days"]) for r in E
          if r["class_k"] not in ABSENCE and r["latency_days"].strip().lstrip("-").isdigit()]
-    print(f"  absence-like (class in {sorted(ABSENCE)}): n={len(x)}  median {st.median(x):.1f}  mean {st.fmean(x):.1f}")
-    print(f"  other                                     : n={len(y)}  median {st.median(y):.1f}  mean {st.fmean(y):.1f}")
     U, z, p = mannwhitney(x, y)
     reg("AbsN", len(x)); reg("AbsMedian", st.median(x), "{:.1f}")
     reg("AbsMean", st.fmean(x), "{:.1f}")
     reg("OthN", len(y)); reg("OthMedian", st.median(y), "{:.1f}")
     reg("OthMean", st.fmean(y), "{:.1f}")
-    reg("MWZ", z, "{:.2f}"); reg("MWP", p, "{:.2f}")
-    print(f"  Mann-Whitney U = {U:.0f}  z = {z:.2f}  two-sided p = {p:.4f}")
-    print("  EXPLORATORY and NOT SUPPORTED. Reported because it was run.")
+    reg("MWZ", z, "{:.2f}"); reg("MWP", fmt_p(p))
+    print(f"  absence-like n={len(x)}  median {st.median(x):.1f}  mean {st.fmean(x):.1f}")
+    print(f"  other        n={len(y)}  median {st.median(y):.1f}  mean {st.fmean(y):.1f}")
+    print(f"  Mann-Whitney z = {z:.2f}  two-sided p = {p:.4f}")
 
     h("S5b  Figures quoted in the mechanism section")
+    by_id = {r["record_id"]: r for r in E}
+
     def rid(r):
         try:
             return int(r["record_id"].lstrip("Kk"))
@@ -247,48 +470,64 @@ def main():
     # its stored value was corrected the macro silently began pointing at a
     # different record, and the manuscript claimed a latency the record never
     # had. A derived aggregate is not a substitute for a specific value.
-    k93 = next((r for r in E if r["record_id"] == "K93"), None)
-    if k93:
-        print(f"  K93 latency            = {reg('KNineThreeLat', k93['latency_days'])}")
-    k91 = next((r for r in E if r["record_id"] == "K91"), None)
-    if k91:
-        print(f"  K91 latency            = {reg('KNineOneLat', k91['latency_days'])}")
+    for rec, name in (("K93", "KNineThreeLat"), ("K91", "KNineOneLat")):
+        if rec in by_id:
+            print(f"  {rec} latency            = {reg(name, by_id[rec]['latency_days'])}")
+    # The skipped-day chain: walk `prior_record` back from the last process
+    # record that the routine itself surfaced, for as long as the link stays
+    # inside the same class and mechanism. The chain is in the data; the
+    # manuscript quotes its length and endpoints instead of typing them.
+    last = next(r for r in reversed(E) if r["class_k"] == "process"
+                and r["mechanism_k"] == "routine_flow" and r["is_repeat"] == "yes")
+    chain = [last]
+    while True:
+        prev = by_id.get(chain[-1]["prior_record"])
+        if (not prev or prev["class_k"] != "process"
+                or prev["mechanism_k"] != "routine_flow"):
+            break
+        chain.append(prev)
+    reg("SkipChainN", len(chain))
+    reg("SkipChainFirst", chain[-1]["record_id"])
+    reg("SkipChainLast", chain[0]["record_id"])
+    reg("SkipChainAgent", sum(1 for r in chain if r["detected_by"] == "agent"))
+    reg("SkipChainLatMax", max(int(r["latency_days"]) for r in chain))
+    print(f"  skipped-day chain      = {len(chain)} records, "
+          f"{chain[-1]['record_id']} .. {chain[0]['record_id']}, "
+          f"agent-detected {MACROS['SkipChainAgent']}, max latency "
+          f"{MACROS['SkipChainLatMax']}")
     FREEZE = 78   # the record at which the controlled vocabulary was fixed
     conf = [r for r in E if (rid(r) or 0) >= FREEZE]
     print(f"  confirmatory pool (K{FREEZE}+) = {reg('ConfirmN', len(conf))}")
     print(f"  records before freeze  = {reg('VocabFreezeN', len(E) - len(conf))}")
-    # The two foreign-equity funds: correlation is derivable from returns.csv,
-    # unlike the look-through overlap, which is not published.
-    import collections
-    ret = collections.defaultdict(dict)
+
+    ret = defaultdict(dict)
     for r in load("returns.csv"):
         v = num(r["return_pct"])
         if v is not None:
             ret[r["date"]][r["asset_id"]] = v
+
     def rho(a, b):
-        d = sorted(set(k for k, v in ret.items() if a in v and b in v))
+        d = sorted(k for k, v in ret.items() if a in v and b in v)
         if len(d) < 5:
             return None
         x = [ret[k][a] for k in d]; y = [ret[k][b] for k in d]
         mx, my = st.fmean(x), st.fmean(y)
         den = math.sqrt(sum((p - mx) ** 2 for p in x) * sum((q - my) ** 2 for q in y))
         return sum((p - mx) * (q - my) for p, q in zip(x, y)) / den if den else None
-    r23 = rho("A2", "A3")
-    if r23:
-        print(f"  corr(A2, A3)           = {reg('CorrAtwoAthree', r23, '{:.2f}')}")
-    # effective independent observations, Kish-style: k^2 / sum(rho_ij)
-    ids = sorted({a for v in ret.values() for a in v}
-                 & {a for a in {x for v in ret.values() for x in v}
-                    if sum(1 for v in ret.values() if a in v) >= 15})
+
+    reg("CorrAtwoAthree", rho("A2", "A3"), "{:.2f}")
+    print(f"  corr(A2, A3)           = {MACROS['CorrAtwoAthree']}")
+    # Effective independent series per day, Kish-style: k^2 / sum(rho_ij),
+    # over the assets that are actually forecast.
+    ids = sorted({r["asset_id"] for r in F})
     tot = 0.0
     for i in ids:
         for j in ids:
             c = 1.0 if i == j else rho(i, j)
             if c is not None:
                 tot += c
-    if tot:
-        print(f"  n_eff (k={len(ids)}, rho sum {tot:.2f}) = "
-              f"{reg('NEff', len(ids) ** 2 / tot, '{:.1f}')}")
+    reg("NEff", len(ids) ** 2 / tot, "{:.1f}")
+    print(f"  n_eff (k={len(ids)}, rho sum {tot:.2f}) = {MACROS['NEff']}")
 
     h("S6  Longest-hidden records")
     for r in sorted(E, key=lambda r: -int(r["latency_days"] or 0))[:6]:
@@ -298,18 +537,17 @@ def main():
 
 def emit_latex(path):
     """Write \\newcommand definitions consumed by main.tex."""
-    import datetime
-    stamp = datetime.date.today().isoformat()
     lines = ["% GENERATED FILE - DO NOT EDIT.",
              "% Produced by paper/compute_numbers.py from data/*.csv.",
-             "% Any manuscript number that is typed by hand is a bug: it will",
-             "% silently go stale as the ledger grows. That is precisely the",
-             "% failure mode this paper documents.",
+             "% Any manuscript number that is typed by hand is a bug.",
+             "% The data is a frozen release, so this file is deterministic:",
+             "% regenerating it on any day must reproduce it byte for byte.",
              ""]
-    # A stamp so that a MISSING numbers.tex produces one legible error instead
-    # of a cascade of "Undefined control sequence", and so that a STALE copy is
-    # visible on the title page of the compiled PDF rather than only in CI.
-    lines.append("\\newcommand{\\NumbersStamp}{%s, %d values}" % (stamp, len(MACROS)))
+    # No date in the stamp. The release is frozen; a stamp that changed with
+    # the calendar made the staleness check fail on every day but the one the
+    # file was generated on.
+    lines.append("\\newcommand{\\NumbersStamp}{%d values, window %s to %s}"
+                 % (len(MACROS), MACROS["WindowStart"], MACROS["WindowEnd"]))
     lines.append("")
     for k in sorted(MACROS):
         lines.append("\\newcommand{\\%s}{%s}" % (k, MACROS[k]))

@@ -6,3 +6,4 @@ A4,fund_daily,"Open-end fund, ~79% precious metals + ~18% commodity-linked fixed
 A5,fund_daily,"Open-end fund, domestic equity (broad domestic index); NAV T+1"
 A6,fx_deposit,Foreign-currency deposit; local-currency value driven by a MANAGED-CRAWL exchange rate
 A7,fund_daily,"Open-end fund, ~92% domestic sovereign/corporate lease certificates; low volatility; NAV T+1"
+A8,fund_daily,"Open-end fund, short-term domestic lease certificates plus money-market placements; very low volatility; NAV T+1; held from early October, never forecast at 1 day"

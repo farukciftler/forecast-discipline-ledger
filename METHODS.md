@@ -36,8 +36,10 @@ calculator must never hallucinate, so the calculator is not a language model.
 
 ## 3. Assets
 
-Six forecastable assets (`data/assets.csv`). Two additional accrual accounts
-in the source ledger are excluded here — they are not forecast, and they are
+Six forecastable assets (`data/assets.csv`). Two further funds, A7 and A8,
+are held and priced but never forecast at one day: their daily volatility is
+too small for a direction call to mean anything. Accrual accounts in the
+source ledger are excluded here — they are not forecast, and they are
 balances.
 
 | id | class | pricing mechanics |
@@ -204,3 +206,24 @@ it sat at the 87th of 246 observations — an event seen roughly every third
 day. The decisive evidence: the *previous* day had produced a larger
 deviation and had not been flagged. What triggered the flag was not the
 signal's size but its **direction**.
+
+## 11. Study window and release rule
+
+This release is a frozen window, 2026-08-01 to 2026-10-31: three calendar
+months from the ledger's first day. The end date is the last day of the third
+calendar month. It was fixed when the accompanying paper was prepared and was
+not chosen by inspecting results.
+
+A row is released only if **all three** dates fall inside the window: the day
+the forecast was written, its target date, and the day its outcome was
+observed. A forecast whose outcome arrives after the window appears in
+`forecasts.csv` with no row in `resolutions.csv`. Error records are released
+by the date they were logged, so an error that happened inside the window but
+was noticed after it is not in this release.
+
+`data/study_window.csv` records how much of the window the routine covered.
+The routine has no scheduler; a run starts when the operator opens a session.
+Days on which that did not happen are missing, and they are not backfilled:
+a quote that was not recorded on its day cannot be recovered later, and an
+evidence file written afterwards would not be the evidence that was available
+at the time.

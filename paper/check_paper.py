@@ -28,7 +28,9 @@ BUILTIN = re.compile(
     r"rho|sum|sigma|mu|alpha|beta|delta|pm|neq|infty|log|exp|min|max|"
     r"cite|bibliographystyle|bibliography|emph|IfFileExists|GenericError|"
     r"providecommand|ifdefined|fi|else|relax|space|"
-    r"modelA|modelB|em|it|bf|sl|tt|rm|sf|footnotesize|scriptsize|large|Large)$")
+    r"modelA|modelB|em|it|bf|sl|tt|rm|sf|footnotesize|scriptsize|large|Large|"
+    r"subsection|tabcolsep|setlength|ldots|dots|textit|medskip|smallskip|"
+    r"chi|mathbf)$")
 
 
 # Literals that are legitimately not data. Each needs a reason.
@@ -48,6 +50,11 @@ ALLOWED_LITERALS = {
     "1950", "1990", "2007", "2015", "2018", "2024",  # citation years in refs
     "2310.06770",  # arXiv id
     "256",   # 2^8 groupings, stated in prose as a combinatorial fact
+    "100", "120", "40",   # minimum n fixed in PREREGISTRATION.md (H1-H3, H7-H8, H9)
+    "250",                # the shadow rule's look-back in trading days, fixed
+                          # by PREREGISTRATION.md H14-a
+    "0.84", "0.85",       # the effect size predicted in PREREGISTRATION.md H14-c,
+                          # quoted from that document, not measured from the data
 }
 
 
@@ -130,7 +137,7 @@ def main():
              + "\n      ".join(tells))
     print("ok: no machine-generated prose tells")
 
-    unused = sorted(defined - used - {"modelA", "modelB"})
+    unused = sorted(defined - used - {"NumbersStamp"})
     if unused:
         print(f"note: {len(unused)} generated macros unused "
               f"({', '.join(unused[:8])}{' ...' if len(unused) > 8 else ''})")

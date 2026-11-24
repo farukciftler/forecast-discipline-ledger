@@ -1,73 +1,80 @@
 # Paper
 
-Manuscript for the dataset in this repository.
+Manuscript for the dataset in this repository. It analyses a frozen study
+window, 2026-08-01 to 2026-10-31.
 
 | file | what it is |
 |---|---|
-| `main.tex` | the manuscript — **contains no hand-typed data numbers** |
-| `ALLOWED_LITERALS` in `check_paper.py` | the short list of numbers that are legitimately not data |
-| `numbers.tex` | **generated**; `\newcommand` for every quoted figure |
+| `main.tex` | the manuscript; **contains no hand-typed data numbers** |
+| `numbers.tex` | **generated**; one `\newcommand` for every quoted figure |
 | `compute_numbers.py` | recomputes all of them from `../data/*.csv` |
 | `check_paper.py` | guard: fails if a number was typed by hand or has gone stale |
-| `refs.bib` | bibliography, **every entry verified against the publisher record** |
+| `ALLOWED_LITERALS` in `check_paper.py` | the short list of numbers that are legitimately not data, each with a reason |
+| `refs.bib` | bibliography, every entry verified against the publisher record |
 
 ## The workflow
 
 The paper argues that a rule which lives only in prose is a rule contingent on
-someone remembering it. Applying that to the paper itself: **a manuscript with
-hand-typed numbers goes stale silently the moment the ledger grows by one day.**
-So it does not have any.
+someone remembering it. Applied to the paper itself: a manuscript with
+hand-typed numbers is wrong the moment the data changes and nobody notices.
+So it has none.
 
 ```
 data/*.csv
     │
-    ├─ compute_numbers.py --latex ─→ numbers.tex   (68 \newcommand definitions)
+    ├─ compute_numbers.py --latex ─→ numbers.tex
     │                                    │
     └──────────────────────────── main.tex \input{numbers}
                                          │
                           check_paper.py ─┴─→ CI
 ```
 
-`main.tex` writes `\CovRate` and `\ErrN`, never `0.869` and `97`.
-
-### Day to day
+`main.tex` writes `\CovRate` and `\ErrN`, never the figures themselves.
 
 ```bash
-python3 paper/compute_numbers.py --latex   # regenerate after the data moves
+python3 paper/compute_numbers.py --latex   # regenerate
 python3 paper/check_paper.py               # verify before committing
 ```
 
-`check_paper.py` fails on two things, and both are tested to actually fire:
+The data is a frozen release, so `numbers.tex` is deterministic: regenerating
+it on any day reproduces it byte for byte.
+
+## What `compute_numbers.py` counts
+
+Pools follow `PREREGISTRATION.md`, not convenience:
+
+- rows from different protocol versions are never pooled;
+- one-month outputs are projections and enter no skill claim;
+- unresolved rows and flagged substitutions enter no test.
+
+The **primary pool** is therefore: resolved, not a flagged substitution, 1-day
+and 1-week horizons, latest protocol version. An earlier draft pooled
+everything and quoted that as the headline, which contradicted the
+pre-registration the same draft cited. `analysis/reproduce.py` and
+`analysis/check_docs.py` use the same definition.
+
+## What `check_paper.py` checks
 
 1. **An undefined macro in `main.tex`.**
-2. **A bare numeric literal in the body.** The first check alone was not
-   enough, and this is not hypothetical: the section-5 table carried
-   `400 d` and `18 d` as plain text and passed. Literals must either be
-   generated or added to `ALLOWED_LITERALS` **with a reason** (the DOI prefix,
-   `CC BY 4.0`, subscript labels, and threshold definitions are there).
-3. **A stale `numbers.tex`**: it regenerates into a temporary file and
-   byte-compares. If the data moved and nobody re-ran the generator, this fails.
-4. **Machine-generated prose tells.** Em-dashes, the standard vocabulary
-   (`comprehensive`, `robust`, `leverage`, `nuanced`, …), filler openers,
-   connective filler, not-only-but-also, generic closers, and unverified
-   time-span phrases such as "over a year".
+2. **A bare numeric literal in the body.** Literals must either be generated
+   or added to `ALLOWED_LITERALS` with a reason: the DOI prefix, `CC BY 4.0`,
+   subscript labels, and thresholds fixed by the pre-registration are there.
+3. **A stale `numbers.tex`.** It regenerates into a temporary file and
+   byte-compares.
+4. **Machine-generated prose tells.** Em-dashes, the standard vocabulary,
+   filler openers, connective filler, generic closers, and unverified
+   time-span phrases.
 
 All four were tested by deliberately breaking them.
 
-The fourth check is not cosmetic. The first draft carried seventeen em-dashes,
-about one per paragraph, and the phrase "occasionally not at all for over a
-year" survived in the conclusion after the 400-day error had been corrected
-everywhere else. A prose habit hid a factual error, which is the same failure
-this paper documents in its data.
-
-### CI
+## CI
 
 `.github/workflows/ci.yml` runs on every push, pull request and release:
 
 | job | checks |
 |---|---|
-| `data` | `reproduce.py` runs · `check_paper.py` passes · no non-English residue · no vendor/institution identifiers in `data/` · `CITATION.cff` has required keys |
-| `paper` | regenerates `numbers.tex` and **fails if the committed copy differs** · compiles the PDF · uploads it as an artifact · attaches it to releases |
+| `data` | `reproduce.py` runs · `check_docs.py` and `check_paper.py` pass · no non-English residue · no vendor or institution identifiers in `data/` · `CITATION.cff` has required keys |
+| `paper` | regenerates `numbers.tex` and fails if the committed copy differs · compiles the PDF · assembles the arXiv source package · attaches both to releases |
 
 The PDF is never committed; it is built from source every time.
 
@@ -75,87 +82,47 @@ The PDF is never committed; it is built from source every time.
 
 No local LaTeX is required to work on the numbers. To build the PDF you need
 `article` plus `geometry`, `booktabs`, `amsmath`, `hyperref`, `xcolor` and
-`caption` — all present in any standard distribution and on Overleaf.
+`caption`, all present in any standard distribution and on Overleaf.
 
-The manuscript has a bibliography, so a single `pdflatex` pass is not enough.
-Use `latexmk`, which sequences the passes for you:
+The manuscript has a bibliography, so a single `pdflatex` pass is not enough:
 
 ```bash
 cd paper && latexmk -pdf main.tex
 ```
 
-If you run the passes by hand, all four are required, and skipping `bibtex`
-gives a PDF with an **empty references section** and no error:
+By hand, all four passes are required; skipping `bibtex` gives a PDF with an
+empty references section and no error:
 
 ```bash
 pdflatex main && bibtex main && pdflatex main && pdflatex main
 ```
 
-**On Overleaf, link the project to this GitHub repository** rather than
-uploading files by hand. `numbers.tex` is regenerated whenever the data moves,
-and a hand-carried copy goes out of date silently: the symptom is a run of
-`Undefined control sequence` errors for macros that exist in the repository but
-not in your copy. If you do upload by hand, upload the whole `paper/`
-directory, not just `main.tex`.
-`numbers.tex` holds every figure the manuscript quotes and `refs.bib` holds the
-bibliography; without them the paper compiles but comes out with blank numbers
-or an empty reference list.
-
 The simplest way to get a correct PDF without installing anything is to take
-the one CI already built: open the latest run under **Actions**, download the
+the one CI built: open the latest run under **Actions** and download the
 `manuscript` artifact, or take the PDF attached to the most recent release.
-
-## Two guards inside the manuscript itself
-
-`main.tex` refuses to compile quietly without its generated figures. If
-`numbers.tex` is absent it raises a single readable error naming the command to
-run, instead of failing once per missing macro.
-
-The title page prints **`Figures generated <date>, <n> values`**. This is a
-living document, so a `numbers.tex` that has fallen behind the data is visible
-on page one rather than only in CI.
 
 ## Citations
 
-A paper that corrects a fabricated number must not contain a fabricated
-citation. Every entry in `refs.bib` was checked against the publisher or
-conference record for author list, venue, year, volume and pages before being
-written down; none was reconstructed from memory. Re-verify before submission
-anyway — it costs minutes and the failure mode is severe.
+Every entry in `refs.bib` was checked against the publisher or conference
+record for author list, venue, year, volume and pages before being written
+down; none was reconstructed from memory. Re-verify before submission anyway.
 
-The related-work section ends with an explicit statement that we did not find
-prior work releasing longitudinal agent error telemetry. That is a claim about
-our search, not about the literature, and it is phrased that way on purpose.
+The related-work section ends with a statement that we did not find prior work
+releasing longitudinal agent error telemetry. That is a claim about our
+search, not about the literature, and it is phrased that way on purpose.
 
 ## Submitting to arXiv
 
-Step by step, including how to fetch the files: **[ARXIV.md](ARXIV.md)**.
+Step by step: **[ARXIV.md](ARXIV.md)**.
 
-## Before submitting
+## Scope
 
-1. **Decide on model disclosure.** The released data pseudonymises the
-   forecasting model as `model_A` / `model_B`, and the manuscript follows suit
-   through the `\modelA` / `\modelB` macros at the top of `main.tex`. If you
-   name the model family, redefine those two macros and add a sentence to
-   *Data availability*.
-2. **Re-run the generator**, then read the abstract: the day count, record
-   counts and every rate update themselves, but the *prose* around them
-   ("more than a third", "roughly three per day") does not. Those are the
-   sentences to re-check.
-3. **arXiv category:** `cs.SE` primary, `cs.AI` cross-list.
-4. **arXiv licence:** CC BY 4.0, matching the dataset.
-5. **Endorsement:** a first submission to `cs.SE` or `cs.AI` may require
-   endorsement from an established author in that category.
+The paper reports a completed three-month window. Its forecasting section
+exists to be null and to show that the null was pre-registered; the
+contribution is the operational error telemetry and the failure mode named in
+§6. One agent family, one task, one supervisor: the manuscript says what that
+sample cannot support.
 
-## Honest scope
-
-This is an **interim report**. 38 forecast days with roughly three effectively
-independent observations per day is thin for any forecasting claim, and the
-manuscript says so rather than hedging. The forecasting section exists to be
-null and to show the null was pre-registered; the contribution is the
-operational error telemetry and the failure mode named in §5.
-
-Three months of additional data would cross several pre-registered thresholds
-that are currently unmet. arXiv versioning (v2, v3) is the normal way to handle
-that, and the workflow above means a new version is a regeneration, not a
-retyping.
+The source ledger kept running after the window closed. Later data is not in
+this release and is not described in the paper. A later study would be a new
+window with its own release, not an edit to this one.

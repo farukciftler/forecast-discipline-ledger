@@ -1,0 +1,2 @@
+window_start,window_end,calendar_days,market_open_days,open_days_with_forecast,open_days_missed,longest_missed_run,missed_run_at_window_end,closed_days_with_forecast
+2026-08-01,2026-10-31,92,64,58,6,4,4,19

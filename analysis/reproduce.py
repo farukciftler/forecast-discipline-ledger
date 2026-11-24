@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 """Regenerates every number quoted in FINDINGS.md from data/ alone.
 
+The release is a FROZEN study window (see data/study_window.csv). Pools follow
+PREREGISTRATION.md: rows from different protocol versions are never pooled and
+one-month projections enter no skill claim, so every forecast figure below is
+computed on the PRIMARY pool: resolved, not a flagged substitution, 1-day and
+1-week horizons, latest protocol version.
+
 Standard library only. Run from the research-paper/ directory:
 
     python3 analysis/reproduce.py
@@ -35,18 +41,43 @@ def wilson(k, n, z=1.96):
     return round((c - s) / d, 3), round((c + s) / d, 3)
 
 
+def log_pmf(i, n, p0):
+    # Log-space. math.comb overflows a float once n passes about a thousand.
+    return (math.lgamma(n + 1) - math.lgamma(i + 1) - math.lgamma(n - i + 1)
+            + i * math.log(p0) + (n - i) * math.log(1 - p0))
+
+
 def binom_two_sided(k, n, p0):
     if not n:
         return None
-    pmf = lambda i: math.comb(n, i) * p0 ** i * (1 - p0) ** (n - i)
-    obs = pmf(k)
-    return round(min(1.0, sum(pmf(i) for i in range(n + 1) if pmf(i) <= obs * (1 + 1e-9))), 4)
+    obs = log_pmf(k, n, p0)
+    return min(1.0, sum(math.exp(lp) for lp in
+                        (log_pmf(i, n, p0) for i in range(n + 1))
+                        if lp <= obs + 1e-9))
 
 
 def binom_one_sided(k, n, p0=0.5):
     if not n:
         return None
-    return round(sum(math.comb(n, i) * p0 ** n for i in range(k, n + 1)), 4)
+    return min(1.0, sum(math.exp(log_pmf(i, n, p0)) for i in range(k, n + 1)))
+
+
+def spearman(x, y):
+    def rank(v):
+        order = sorted(range(len(v)), key=lambda i: v[i])
+        rk, i = [0.0] * len(v), 0
+        while i < len(order):
+            j = i
+            while j + 1 < len(order) and v[order[j + 1]] == v[order[i]]:
+                j += 1
+            for k in range(i, j + 1):
+                rk[order[k]] = (i + j) / 2 + 1
+            i = j + 1
+        return rk
+    rx, ry = rank(x), rank(y)
+    mx, my = st.mean(rx), st.mean(ry)
+    den = math.sqrt(sum((a - mx) ** 2 for a in rx) * sum((b - my) ** 2 for b in ry))
+    return sum((a - mx) * (b - my) for a, b in zip(rx, ry)) / den if den else 0.0
 
 
 def h(t):
@@ -60,16 +91,49 @@ def main():
     # here, exactly as they are in the source ledger's calibration. They stay
     # in the CSV, flagged, because deleting a row is not the same as declining
     # to score it.
-    R = [r for r in load("resolutions.csv")
-         if r["status"] == "resolved" and r.get("dirty_substitution") != "yes"]
-    print(f"scored rows: {len(R)}")
+    W = load("study_window.csv")[0]
+    F = load("forecasts.csv")
+    ALL = [r for r in load("resolutions.csv")
+           if r["status"] == "resolved" and r.get("dirty_substitution") != "yes"]
+    latest = max(r["protocol_version"] for r in ALL if r["protocol_version"])
+    FC = [r for r in ALL if r["horizon_kind"] == "forecast"]
+    R = [r for r in FC if r["protocol_version"] == latest]
+    h("0. Study window and pools")
+    print(f"  window {W['window_start']} .. {W['window_end']}  "
+          f"({W['calendar_days']} calendar days)")
+    print(f"  market-open days {W['market_open_days']}: routine ran on "
+          f"{W['open_days_with_forecast']}, missed {W['open_days_missed']} "
+          f"(longest run {W['longest_missed_run']}, at window end "
+          f"{W['missed_run_at_window_end']}); ran on "
+          f"{W['closed_days_with_forecast']} closed days")
+    print(f"  forecast days {len({r['as_of'] for r in F})}, forecasts written {len(F)}")
+    print(f"  scored rows {len(ALL)} = projections {len(ALL) - len(FC)} + earlier "
+          f"protocols {len(FC) - len(R)} + primary {len(R)}")
+    print(f"primary pool: {len(R)} scored forecasts "
+          f"(protocol v{latest}, 1d + 1w, {len({r['as_of'] for r in R})} forecast days)")
 
     # --- 1. interval coverage ------------------------------------------
     h("1. Interval coverage (target 0.80)")
     ib = [r for r in R if r["in_band"] in ("0", "1")]
     k = sum(1 for r in ib if r["in_band"] == "1")
     print(f"  coverage = {k}/{len(ib)} = {k/len(ib):.3f}  CI95 {wilson(k, len(ib))}"
-          f"  p(=0.80) = {binom_two_sided(k, len(ib), 0.80)}")
+          f"  p(=0.80) = {binom_two_sided(k, len(ib), 0.80):.2g}")
+    fx = {a["asset_id"] for a in load("assets.csv") if a["asset_class"] == "fx_deposit"}
+    nf = [r for r in ib if r["asset_id"] not in fx]
+    kn = sum(1 for r in nf if r["in_band"] == "1")
+    print(f"  excluding the managed-rate asset: {kn}/{len(nf)} = {kn/len(nf):.3f}")
+    # Shadow interval (PREREGISTRATION H14): written beside 1-day forecasts,
+    # never scored. Compared on matched rows only.
+    sh = {(r["as_of"], r["asset_id"], r["horizon"]):
+          (num(r["band_shadow_low"]), num(r["band_shadow_high"]))
+          for r in F if num(r["band_shadow_low"]) is not None}
+    m = [(r, sh[(r["as_of"], r["asset_id"], r["horizon"])]) for r in ib
+         if r["horizon"] == "1d" and (r["as_of"], r["asset_id"], r["horizon"]) in sh
+         and num(r["actual_pct"]) is not None]
+    s_in = sum(1 for r, (lo, hi) in m if lo <= num(r["actual_pct"]) <= hi)
+    t_in = sum(1 for r, _ in m if r["in_band"] == "1")
+    print(f"  shadow interval, {len(m)} matched 1-day rows: shadow "
+          f"{s_in/len(m):.3f}  standing {t_in/len(m):.3f}")
 
     # --- 2. baselines ---------------------------------------------------
     h("2. Baselines")
@@ -79,8 +143,18 @@ def main():
         if not v:
             continue
         kk = sum(1 for r in v if r[col] == "True")
+        per = defaultdict(list)
+        for r in v:
+            per[r["as_of"]].append(r[col] == "True")
+        won = sum(1 for x in per.values() if sum(x) * 2 > len(x))
+        lost = sum(1 for x in per.values() if sum(x) * 2 < len(x))
         print(f"  {label:10s} {kk:3d}/{len(v):3d} = {kk/len(v):.3f}"
-              f"  CI95 {wilson(kk, len(v))}  p(one-sided, >0.5) = {binom_one_sided(kk, len(v))}")
+              f"  CI95 {wilson(kk, len(v))}  p = {binom_one_sided(kk, len(v)):.2g}"
+              f"   | days won {won}/{won + lost}  p = {binom_one_sided(won, won + lost):.2g}")
+    h3 = [r for r in R if r["confidence"] in ("medium", "high")
+          and r["beat_all_three"] in ("True", "False")]
+    print(f"  H3 subgroup (confidence medium/high): n = {len(h3)}, beat all three "
+          f"{sum(1 for r in h3 if r['beat_all_three'] == 'True')}  (minimum n 100)")
 
     # --- 3. directional accuracy (diagnostic) ---------------------------
     h("3. Directional accuracy (DIAGNOSTIC, not a headline)")
@@ -110,6 +184,25 @@ def main():
     print("  BSS < 0  =>  p_up loses to simply tracking the base rate."
           if bss < 0 else
           "  BSS > 0  =>  p_up edges out the running base rate, by a small margin.")
+    # Why a positive score is not read as skill: one asset moves in one
+    # direction by policy. Exploratory, not pre-registered.
+    up = lambda r: 1 if (num(r["actual_pct"]) or 0) > 0 else 0
+    pb = [r for r in R if num(r["brier"]) is not None]
+    fxr = [r for r in pb if r["asset_id"] in fx]
+    rest = [r for r in pb if r["asset_id"] not in fx]
+    b_all = st.mean(up(r) for r in pb)
+    print(f"  full-sample base rate {b_all:.3f}: BSS = "
+          f"{1 - st.mean(num(r['brier']) for r in pb) / st.mean((b_all - up(r)) ** 2 for r in pb):+.3f}")
+    print(f"  managed-rate asset rose on {sum(up(r) for r in fxr)} of {len(fxr)} scored rows")
+    b0 = st.mean(up(r) for r in rest)
+    print(f"  excluding it: BSS = "
+          f"{1 - st.mean(num(r['brier']) for r in rest) / st.mean((b0 - up(r)) ** 2 for r in rest):+.3f}")
+    grp = defaultdict(list)
+    for r in pb:
+        grp[r["asset_id"]].append(r)
+    own = sum((st.mean(up(x) for x in v) - up(r)) ** 2 for v in grp.values() for r in v)
+    print(f"  against each asset's own base rate: BSS = "
+          f"{1 - sum(num(r['brier']) for r in pb) / own:+.3f}")
     # NOTE: this climatology is WALK-FORWARD (base rate from rows seen so far).
     # paper/compute_numbers.py uses the FULL-SAMPLE base rate, which is a
     # look-ahead baseline and therefore a harder one. The two BSS figures are
@@ -151,6 +244,9 @@ def main():
     print(f"  detection latency (days): median {lat[len(lat)//2]}  mean {st.mean(lat):.1f}  max {max(lat)}")
     print(f"  detected by: {dict(who)}")
     print(f"  repeats of a prior record: {rep}/{len(E)} = {rep/len(E):.3f}  CI95 {wilson(rep, len(E))}")
+    seq = [int(r["latency_days"]) for r in E if r["latency_days"].strip().lstrip("-").isdigit()]
+    print(f"  H7 Spearman(record order, latency) = {spearman(list(range(len(seq))), seq):+.3f}"
+          f"  n = {len(seq)}  (predicted negative; minimum n 120)")
     # Controlled vocabulary only. The free-text `class` / `subclass` columns
     # are NOT published: they were the reason the controlled columns exist
     # (75 records produced 36 distinct free-text classes and no test could be
@@ -188,8 +284,8 @@ def main():
     print("  reported in FINDINGS.md; only percentage returns are published here.")
 
     h("Note")
-    print("  ~3 effectively independent observations per day (assets are correlated")
-    print("  in blocks). Nominal n overstates statistical power accordingly.")
+    print("  ~3 effectively independent series (assets are correlated in blocks).")
+    print("  Nominal n overstates statistical power; prefer the day-level tests.")
 
 
 if __name__ == "__main__":

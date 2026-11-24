@@ -42,34 +42,42 @@ def wilson(k, n, z=1.96):
 
 def main():
     E = load("error_log.csv")
-    # Use the SAME filters the other two scripts use. A checker with its own
-    # definitions produces false alarms, and an audit that cries wolf gets
-    # ignored the one time it is right.
-    #   reproduce.py:        status == "resolved"
-    #   compute_numbers.py:  distinct as_of days in forecasts.csv
-    # Third script, same filter. reproduce.py and compute_numbers.py both
-    # exclude dirty substitutions (K113); this one did not, and said the docs
-    # were wrong when the docs were right. A checker that defines its own
-    # population is a checker that cries wolf.
-    R = [r for r in load("resolutions.csv")
-         if r["status"] == "resolved" and r.get("dirty_substitution") != "yes"]
     F = load("forecasts.csv")
+    # Use the SAME population the other two scripts use: resolved, not a
+    # flagged substitution, forecast horizons only, latest protocol version.
+    # A checker with its own definitions produces false alarms, and an audit
+    # that cries wolf gets ignored the one time it is right.
+    ALL = [r for r in load("resolutions.csv")
+           if r["status"] == "resolved" and r.get("dirty_substitution") != "yes"]
+    latest = max(r["protocol_version"] for r in ALL if r["protocol_version"])
+    R = [r for r in ALL
+         if r["horizon_kind"] == "forecast" and r["protocol_version"] == latest]
     lat = [int(r["latency_days"]) for r in E
            if r["latency_days"].strip().lstrip("-").isdigit()]
     rep = sum(1 for r in E if r["is_repeat"] == "yes")
     lo, hi = wilson(rep, len(E))
     days = len({r["as_of"] for r in F if r.get("as_of")})
+    allk = sum(1 for r in R if r["beat_all_three"] == "True")
+    alln = sum(1 for r in R if r["beat_all_three"] in ("True", "False"))
+    covk = sum(1 for r in R if r["in_band"] == "1")
+    covn = sum(1 for r in R if r["in_band"] in ("0", "1"))
+    W = load("study_window.csv")[0]
+    both = ["FINDINGS.md", "README.md"]
 
     # (label, expected substring, which files must carry it)
     checks = [
+        ("window", f"{W['window_start']} to {W['window_end']}", both),
+        ("forecast days", f"{days} forecast days", both),
+        ("forecasts written", f"{len(F)} forecasts written", ["FINDINGS.md"]),
+        ("primary pool size", f"{len(R)} scored forecasts", both),
         ("error record count", f"{len(E)} error records", ["FINDINGS.md"]),
-        ("error record count", f"{len(E)} in {days} days", ["FINDINGS.md"]),
-        ("scored rows", f"{len(R)} scored forecasts", ["FINDINGS.md", "README.md"]),
-        ("mean latency", f"mean {st.mean(lat):.1f}", ["FINDINGS.md", "README.md"]),
-        ("max latency", f"max {max(lat)}", ["FINDINGS.md", "README.md"]),
+        ("joint baseline rows", f"{allk}/{alln}", both),
+        ("coverage rows", f"{covk}/{covn}", both),
+        ("mean latency", f"mean {st.mean(lat):.1f}", both),
+        ("max latency", f"max {max(lat)}", both),
         ("repeat count", f"{rep}/{len(E)} = {rep / len(E) * 100:.1f}%", ["FINDINGS.md"]),
         ("repeat rate", f"{rep / len(E) * 100:.1f}%", ["README.md"]),
-        ("repeat CI", f"[{lo * 100:.1f}–{hi * 100:.1f}]", ["FINDINGS.md", "README.md"]),
+        ("repeat CI", f"[{lo * 100:.1f}\u2013{hi * 100:.1f}]", both),
     ]
 
     bad = []
@@ -79,14 +87,14 @@ def main():
             if want not in text:
                 bad.append(f"{fn}: {label} -- expected to find {want!r}")
 
-    # The day count is written into the first line of both files as "N-day" or
-    # "N calendar days"; check whichever form each file uses.
-    readme = open(os.path.join(ROOT, "README.md"), encoding="utf-8").read()
-    if f"A {days}-day" not in readme:
-        bad.append(f"README.md: day count -- expected 'A {days}-day'")
-    findings = open(os.path.join(ROOT, "FINDINGS.md"), encoding="utf-8").read()
-    if f"{days} calendar days" not in findings:
-        bad.append(f"FINDINGS.md: day count -- expected '{days} calendar days'")
+    # A frozen release must not describe itself as unfinished. This is the
+    # wording that got the first manuscript returned, and nothing was checking
+    # the documents for it.
+    stale = re.compile(r"\b(interim|so far|to date|and continuing|ongoing)\b", re.I)
+    for fn in both:
+        text = open(os.path.join(ROOT, fn), encoding="utf-8").read()
+        for m in sorted(set(x.group(0).lower() for x in stale.finditer(text))):
+            bad.append(f"{fn}: describes a frozen release as unfinished -- {m!r}")
 
     if bad:
         print("DOCS OUT OF STEP WITH data/:\n")
@@ -96,7 +104,7 @@ def main():
               "the markdown to match. The numbers moved; the sentences did not.")
         return 1
     print(f"ok: README.md and FINDINGS.md agree with data/ "
-          f"({len(E)} error records, {len(R)} scored rows, {days} days)")
+          f"({len(E)} error records, {len(R)} primary-pool rows, {days} forecast days)")
     return 0
 
 

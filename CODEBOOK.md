@@ -14,9 +14,24 @@ collapse.
 
 | column | meaning |
 |---|---|
-| `asset_id` | Pseudonym `A1`…`A7`. Mapping to real instruments is not published |
+| `asset_id` | Pseudonym `A1`…`A8`. Mapping to real instruments is not published. `A7` and `A8` are low-volatility funds that are held but never forecast at one day |
 | `asset_class` | `spot` · `fund_daily` (NAV published T+1, business days only) · `fx_deposit` |
 | `description` | Composition and pricing mechanics, no identifiers |
+
+## `study_window.csv`
+
+One row. The release is a frozen window, and this file says what it covers.
+
+| column | meaning |
+|---|---|
+| `window_start` / `window_end` | First and last calendar day of the study window |
+| `calendar_days` | Length of the window in calendar days |
+| `market_open_days` | Days in the window on which the local market was open. The calendar itself is not published |
+| `open_days_with_forecast` | Market-open days on which the routine ran and wrote forecasts |
+| `open_days_missed` | Market-open days on which it did not |
+| `longest_missed_run` | Longest run of consecutive missed market-open days |
+| `missed_run_at_window_end` | Length of the missed run that ends on the last day of the window, 0 if none |
+| `closed_days_with_forecast` | Days the market was closed on which the routine ran anyway |
 
 ## `returns.csv`
 
@@ -46,12 +61,16 @@ collapse.
 | `is_mechanical` | 1 if the forecast was a deterministic accrual calculation, not a judgement |
 | `band_shadow_low` / `_high` | Candidate v5 interval. **Never scored** (METHODS §7) |
 | `band_shadow_rule` | Identifier of the candidate rule |
+| `model_id` | Pseudonym of the language-model version that wrote the row, `model_A`…`model_D` in order of first use. Four versions wrote forecasts in the window; rows from different versions were produced by different forecasters and should not be read as one |
 
 ## `resolutions.csv`
 
 | column | meaning |
 |---|---|
-| `status` | `resolved` · `pending` · `no_data` |
+| `status` | `resolved` · `no_data` (no price was recorded on the target day) · `no_base_price` (no base price existed when the forecast was written) |
+| `protocol_version` | Version of the forecasting protocol in force when the row was written. **Rows from different versions are never pooled** (PREREGISTRATION, pooling rule 1) |
+| `model_id` | As in `forecasts.csv` |
+| `dirty_substitution` | `yes` if the target day was a market day on which no snapshot was taken, so the row was resolved against a later day's price. Such rows no longer measure the stated horizon and are excluded from every reported figure. They stay in the file because declining to score a row is not the same as deleting it |
 | `actual_pct` | Realized percent change |
 | `abs_err` / `signed_err` | `|point − actual|` and `point − actual` |
 | `in_band` | 1 if the realized value fell inside the 80% interval |
@@ -152,3 +171,25 @@ Look-through exposure of the whole portfolio by underlying asset class, **as
 percentages only**. `holdings_age_days` is the age of the fund-composition
 data used; composition is refreshed roughly monthly, so a large value means
 the breakdown is stale.
+
+## `decisions.csv`
+
+Allocation decisions recorded with the alternatives that were on the table
+that day, so that a decision cannot later be remembered as something else. No
+amounts: options are expressed as weights that sum to one.
+
+| column | meaning |
+|---|---|
+| `decision_id` | Pseudonym `D1`…, in date order |
+| `date` | Day the decision was recorded |
+| `horizon` | Scoring horizon: `1m` · `3m` · `6m` |
+| `option` | `chosen`, or `alt_1`… for each recorded alternative |
+| `is_chosen` | 1 for the option actually taken |
+| `not_scored` | 1 if the alternative was not an allocation and cannot be scored |
+| `n_assets` | Number of assets in the option |
+| `weights` | `asset:weight` pairs; `cash` is a non-forecast cash-like holding, `other` an asset outside this release |
+| `diff_pct_vs_chosen` | Relative outcome of the option against the chosen one at that horizon, percent. Blank until the horizon has elapsed inside the study window |
+| `scored` | 1 once the horizon has elapsed inside the window |
+| `chosen_beat` | For the chosen option: how many scorable alternatives it beat, as `k/n` |
+
+Too few decisions exist for any statistical claim, and none is made.

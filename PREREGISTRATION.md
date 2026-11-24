@@ -224,3 +224,37 @@ Rationale: under a managed-crawl exchange-rate regime, an interval that is
 never breached is **a warning, not a success** — the interval is carrying no
 information. Scoring such an asset in the same pool as equity and commodity
 forecasts inflates the record with easy wins.
+
+---
+
+## Amendment 2026-11-24 — the study window, and what the plan failed to specify
+
+Added when the accompanying paper was prepared. Nothing above is changed.
+
+**The window.** The analysis is reported on a closed window, 2026-08-01 to
+2026-10-31, three calendar months from the ledger's first day. The end date
+was fixed at this amendment and not by inspecting results. Because it was
+fixed after the data existed, it is a forking path the plan did not close,
+and it is declared here instead of being left unsaid.
+
+**The primary pool, as applied.** Resolved rows that are not flagged
+substitutions, at the 1-day and 1-week horizons, under the latest protocol
+version. This is what pooling rules 1–3 and H5/H6 already require; an earlier
+draft of the paper pooled all versions and horizons, which contradicted them.
+
+**Three defects of the plan, found on applying it:**
+
+1. **H8 cannot be run as written.** It requires at least five expected records
+   per cell "after grouping" and never states the grouping. Any grouping
+   chosen now would be chosen after seeing the table. H8 is reported as not
+   run.
+2. **A change of forecasting model was not anticipated.** Four model versions
+   wrote forecasts inside the window. The plan has a pooling rule for protocol
+   versions and none for models. The paper reports the per-model split and
+   does not treat the pooled figure as a property of any one model.
+3. **H13-c does not say whether the base rate is pooled or per asset.** The
+   pooled statistic is reported as pre-registered. The per-asset version is
+   reported as exploratory.
+
+**Minimum sample not reached inside the window:** H3 (99 rows of 100), H9 (31
+directional corrections of 40). Neither is tested.

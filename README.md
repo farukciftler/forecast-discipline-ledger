@@ -1,8 +1,13 @@
 # Forecast Discipline Ledger
 
-A 48-day (and continuing) record of an LLM agent making dated, scored,
-pre-registered predictions about seven financial assets — and, separately, a
+A three-month record (77 forecast days) of an LLM agent making dated, scored,
+pre-registered predictions about six financial assets — and, separately, a
 structured log of every operational error the agent made while doing it.
+
+**This release is a frozen study window: 2026-08-01 to 2026-10-31.** A row is
+included only if the forecast was written, its target date fell, and its
+outcome was observed inside the window. The end date is the last day of the
+third calendar month and was not chosen by looking at results.
 
 This directory is **fully anonymized** and contains no personal information.
 See [Privacy](#privacy-and-anonymization) below.
@@ -26,7 +31,7 @@ caught it (the agent or the human), and **how many days it stayed hidden**.
 
 The second dataset is the more unusual one. Agent evaluation is normally
 *episodic* — one task, pass or fail. This is longitudinal operational failure
-telemetry from a single continuing task with real consequences and a human in
+telemetry from a single long-running task with real consequences and a human in
 the loop.
 
 ## What this is **not**
@@ -34,31 +39,33 @@ the loop.
 - **Not an investment strategy, and not investment advice.** No position
   sizes, no holdings, and no trading decisions appear anywhere in this
   dataset. The forecasts were never used to trade.
-- **Not a claim that LLMs can forecast prices.** The headline result so far
-  is the opposite (see [FINDINGS.md](FINDINGS.md)).
-- **Not a controlled study.** n=1 agent, n=1 operator, n=1 domain and, so
-  far, n=1 volatility regime. See *Limitations*.
+- **Not a claim that LLMs can forecast prices.** The headline result is the
+  opposite (see [FINDINGS.md](FINDINGS.md)).
+- **Not a controlled study.** One agent family, one operator, one domain, one
+  three-month window. See *Limitations*.
 
-## Headline results so far (n=565 scored forecasts, 48 days)
+## Headline results (primary pool: 706 scored forecasts on 62 forecast days)
 
 | Question | Result |
 |---|---|
-| Does the point forecast reduce error spread vs. knowing only the mean? | **It has flipped** — all six are now positive, but four by under 1.5%. See FINDINGS |
-| Do forecasts beat all three baselines at once? | **No** — 34.8% [30.9–39.0], p=1.0 |
-| Do they beat each baseline taken alone? | Yes: naive 61.1%, drift 66.7%, momentum 79.0% (all p<0.001) |
-| Does `p_up` beat the running base rate (Brier skill score)? | **No** — BSS = +0.046 walk-forward; the sign has crossed zero three times |
-| Are the 80% intervals calibrated? | **No, too wide** — 89.0% coverage [86.2–91.3], p<0.0001 |
-| Median days for the agent to detect its own error | **1** (mean 6.2, max 47) |
-| Share of errors that were repeats of a prior recorded error | **40.8%** [32.5–49.8] |
+| Do forecasts beat all three baselines at once? (H1) | **No** — 217/706 = 30.7% of rows [27.4–34.2], and 9 of 58 forecast days |
+| Do they beat each baseline taken alone? | Yes: naive 54.5%, drift 62.5%, momentum 78.2% |
+| Are the 80% intervals calibrated? (H2) | **No, too wide** — 627/706 = 88.8% coverage [86.3–90.9], p<0.0001 |
+| Does `p_up` beat the running base rate? | Pooled Brier skill score +0.122, **entirely from one managed-rate asset**; −0.019 against each asset's own base rate |
+| Does detection latency fall over time? (H7) | **No** — Spearman +0.122 over 146 records |
+| Days for the agent to detect its own error | median **1**, mean 6.0, max 60 |
+| Share of errors that repeat a prior recorded error | **48.6%** [40.7–56.7] |
 
-Note the gap between rows two and three: the agent clears each baseline
+Note the gap between the first two rows: the agent clears each baseline
 individually and fails to clear all three simultaneously. That gap is the
-result. Beating a single baseline in a one-directional market is cheap.
+result. A baseline that can be beaten by accident is not a baseline.
 
-These are all *negative or diagnostic* results, and they are reported as the
-primary findings rather than buried. The design reason is in
+These are *negative or diagnostic* results, and they are reported as the
+primary findings. The design reason is in
 [PREREGISTRATION.md](PREREGISTRATION.md): the analysis plan was fixed before
-the data existed, so there is no subgroup to retreat into.
+the data existed, so there is no subgroup to retreat into. Pre-registered
+hypotheses that did not reach their minimum sample (H3, H9) or could not be
+run as specified (H8) are reported as such in [FINDINGS.md](FINDINGS.md).
 
 ## Files
 
@@ -66,10 +73,10 @@ the data existed, so there is no subgroup to retreat into.
 |---|---|
 | [METHODS.md](METHODS.md) | Protocol, scoring rules, baselines, band construction |
 | [PREREGISTRATION.md](PREREGISTRATION.md) | Hypotheses, tests, minimum n, thresholds — fixed in advance |
-| [FINDINGS.md](FINDINGS.md) | Results to date, with caveats |
+| [FINDINGS.md](FINDINGS.md) | Results for the study window, with caveats |
 | [CASES.md](CASES.md) | Anonymized case studies — how the failures actually looked |
 | [CODEBOOK.md](CODEBOOK.md) | Column definitions and category-label translations |
-| `data/*.csv` | The datasets |
+| `data/*.csv` | The datasets, including `study_window.csv` (the window and how much of it the routine covered) |
 | `analysis/reproduce.py` | Regenerates every number in FINDINGS.md from `data/` alone |
 
 ## Reproducing
@@ -102,9 +109,12 @@ Never exported, by rule:
 - All free text: forecast rationales, evidence claims, notes, error summaries
 - A second household ledger present in the source — never read by the exporter
 
-Assets appear only as `A1`…`A7` with a generic descriptor (asset class,
-rough composition, pricing mechanics). The pseudonym mapping lives only in
-the private repository and is **not** in this directory.
+Assets appear only as `A1`…`A8` with a generic descriptor (asset class,
+rough composition, pricing mechanics), the forecasting models as `model_A`…
+`model_D`, and allocation decisions as `D1`…. The pseudonym mappings live only
+in the private repository and are **not** in this directory. The local market
+calendar is not published either: holiday dates would identify the country, so
+only counts appear in `study_window.csv`.
 
 The exporter runs two independent leak audits on its own output before
 writing succeeds: a **text** scan for identifying terms, and a **structural**
@@ -128,27 +138,29 @@ context verifiable. Dates alone identify no one.
 ## Limitations
 
 1. **No control arm.** There is no "same agent without an error log" condition,
-   so the 40.8% repeat rate has nothing to be compared against.
+   so the 48.6% repeat rate has nothing to be compared against.
 2. **Unknown denominator.** The error log contains only *detected* errors.
    Detection latency is measurable; the error *rate* is not. This is classic
    under-ascertainment and it biases every rate-like quantity.
-3. **One regime.** The entire sample sits in a single, unusually calm and
-   directional market window; realized volatility ran below the 250-day
-   figure for most assets. Any interval-calibration conclusion is conditional
-   on that, and the excess interval coverage is at least partly a regime
-   artifact rather than a pure band-width error.
-4. **Self-reported.** The agent classifies its own errors. Hypothesis H9 in
-   the pre-registration exists precisely to test whether that self-assessment
-   is biased in its own favor — and a *significant* result there is bad news,
-   not good.
-5. **n is small.** 48 days, 565 scored rows, ~3 effectively independent
-   observations per day once the correlation between assets is accounted for.
-   Nothing here is statistically settled.
-6. **Two Brier baselines, two answers.** `analysis/reproduce.py` scores `p_up`
-   against a *walk-forward* base rate (only rows already seen); the manuscript
-   scores it against the *full-sample* base rate, which is a look-ahead and
-   therefore harder baseline. BSS is +0.020 under the first and −0.000 under
-   the second. Neither is a skill claim; both round to nothing.
+3. **Self-reported and self-categorised.** The agent classifies its own
+   errors, and chose the categories. Hypothesis H9 exists to test whether that
+   self-assessment is biased in its own favor; it did not reach its minimum
+   sample in this window.
+4. **Small n, correlated rows.** 62 forecast days in the primary pool and
+   about three effectively independent series once correlation between assets
+   is accounted for. Prefer the day-level tests. Nothing here is statistically
+   settled.
+5. **Mixed models and a late-fixed window.** Four model versions wrote
+   forecasts in the window and the primary pool mixes three of them; the
+   pre-registration did not foresee a model change. The window's end date was
+   fixed when the paper was prepared.
+6. **Funds are priced one day late.** A 1-day fund forecast is written after
+   the session it will be priced on has traded. Single-baseline wins and
+   error-spread gains for funds are therefore not read as skill (H12).
+7. **Two Brier baselines.** `analysis/reproduce.py` leads with the
+   pre-registered *walk-forward* base rate and also prints the *full-sample*
+   one, a look-ahead and therefore harder baseline. The two are +0.122 and
+   +0.114; neither is a skill claim (FINDINGS §4).
 
 ## License and citation
 
