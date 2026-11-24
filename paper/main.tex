@@ -536,9 +536,9 @@ permanently short by three observations.
 scheduler. A run starts when the supervisor opens a session, and the rule that
 it must happen daily lives in the operating document. The log shows what that
 arrangement costs. Records \SkipChainFirst{} to \SkipChainLast{} form a chain
-of \SkipChainN{} entries, \SkipChainAgent{} of them found by the agent on a
-later run, all within \SkipChainLatMax{} days, each restating that the day was
-lost and cannot be recovered. Detection was fast every time and changed nothing, because the
+of \SkipChainN{} entries. The agent found \SkipChainAgent{} of them itself on
+a later run, all within \SkipChainLatMax{} days, and each restates that the day
+was lost and cannot be recovered. Detection was fast every time and changed nothing, because the
 thing detected was an absence that only a trigger could have prevented. The
 window then ends with \MissRunEnd{} consecutive market days on which the
 routine did not run at all. This instance differs from the first two in one
