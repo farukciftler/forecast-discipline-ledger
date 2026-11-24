@@ -355,6 +355,33 @@ def main():
     own = sum((st.fmean(outc(x) for x in v) - outc(r)) ** 2
               for v in by.values() for r in v)
     reg("BSSOwnBase", 1 - agent / own, "{:+.3f}")
+    # Uncertainty on both skill scores, resampling whole forecast days (rows
+    # of one day are not independent). Fixed seed so numbers.tex stays
+    # byte-stable. Descriptive, not a pre-registered test.
+    import random
+    day_rows = defaultdict(list)
+    for r in Pb:
+        day_rows[r["as_of"]].append((num(r["brier"]), outc(r), r["asset_id"]))
+    keys = sorted(day_rows)
+    rng = random.Random(20260801)
+    b_pool, b_own = [], []
+    for _ in range(2000):
+        rows_b = [x for k in (rng.choice(keys) for _ in keys) for x in day_rows[k]]
+        ag_ = st.fmean(x[0] for x in rows_b)
+        base_b = st.fmean(x[1] for x in rows_b)
+        cl_ = st.fmean((base_b - x[1]) ** 2 for x in rows_b)
+        grp = defaultdict(list)
+        for x in rows_b:
+            grp[x[2]].append(x[1])
+        own_ = sum((st.fmean(v) - o) ** 2 for v in grp.values() for o in v) / len(rows_b)
+        if cl_ and own_:
+            b_pool.append(1 - ag_ / cl_); b_own.append(1 - ag_ / own_)
+    b_pool.sort(); b_own.sort()
+    lo_i, hi_i = int(0.025 * len(b_pool)), int(0.975 * len(b_pool)) - 1
+    reg("BSSLo", b_pool[lo_i], "{:+.3f}"); reg("BSSHi", b_pool[hi_i], "{:+.3f}")
+    reg("BSSOwnLo", b_own[lo_i], "{:+.3f}"); reg("BSSOwnHi", b_own[hi_i], "{:+.3f}")
+    print(f"  day-block bootstrap CI95: pooled ({b_pool[lo_i]:+.3f}, {b_pool[hi_i]:+.3f})"
+          f"   own-base ({b_own[lo_i]:+.3f}, {b_own[hi_i]:+.3f})   reps {len(b_pool)}")
     print(f"  managed-crawl asset    = up on {MACROS['FxUp']} of {len(fxr)} scored rows, "
           f"mean p_up {MACROS['FxMeanPup']}")
     print(f"  BSS excluding it       = {MACROS['BSSExFx']}  (base rate {b0:.3f})")
@@ -470,7 +497,19 @@ def main():
     # its stored value was corrected the macro silently began pointing at a
     # different record, and the manuscript claimed a latency the record never
     # had. A derived aggregate is not a substitute for a specific value.
-    for rec, name in (("K93", "KNineThreeLat"), ("K91", "KNineOneLat")):
+    # Which record holds the maximum latency, and when its error began. Emitted
+    # as values so that the claim moves with the data instead of the prose.
+    top = max(E, key=lambda r: int(r["latency_days"] or 0))
+    reg("LatMaxRecord", top["record_id"]); reg("LatMaxEvent", top["event_date"])
+    reg("LatMaxClass", top["class_k"])
+    second = sorted(E, key=lambda r: -int(r["latency_days"] or 0))[1]
+    reg("LatSecondRecord", second["record_id"]); reg("LatSecond", second["latency_days"])
+    reg("LatSecondClass", second["class_k"])
+    print(f"  longest-hidden         = {top['record_id']} ({top['class_k']}, "
+          f"{top['latency_days']}d), then {second['record_id']} ({second['class_k']}, "
+          f"{second['latency_days']}d)")
+    for rec, name in (("K93", "KNineThreeLat"), ("K91", "KNineOneLat"),
+                      ("K118", "KOneOneEightLat")):
         if rec in by_id:
             print(f"  {rec} latency            = {reg(name, by_id[rec]['latency_days'])}")
     # The skipped-day chain: walk `prior_record` back from the last process

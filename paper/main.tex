@@ -104,7 +104,7 @@ made while running the process, with detection latency and attribution.
         pre-registered hypothesis either tested or reported as below its
         minimum sample (\S\ref{sec:forecast}).
   \item A named failure mode, \emph{rules written but not mechanised},
-        illustrated by three clear instances and two adjacent ones
+        illustrated by three clear instances and three adjacent ones
         (\S\ref{sec:mechanism}).
   \item A design that would make the unobserved error population estimable
         instead of merely acknowledged (\S\ref{sec:future}).
@@ -349,8 +349,11 @@ about which asset a row belongs to, so simply knowing that one asset drifts
 upward by policy beats it. Two checks, neither of them pre-registered and both
 therefore exploratory, remove that information. Excluding the asset leaves a
 skill score of $\BSSExFx$. Scoring every row against its own asset's base rate
-gives $\BSSOwnBase$. The stated probabilities and a constant forecast at each
-asset's base rate score about the same.
+gives $\BSSOwnBase$. Resampling whole forecast days puts the pooled score
+between $\BSSLo$ and $\BSSHi$, an interval that excludes zero, and the
+own-base score between $\BSSOwnLo$ and $\BSSOwnHi$, which contains it. The
+stated probabilities and a constant forecast at each asset's base rate score
+about the same.
 
 \begin{table}[t]
 \centering
@@ -388,7 +391,10 @@ $\CorrAtwoAthree$, and two precious-metal instruments track the same
 underlying. A Kish-style effective count, $k^{2}/\sum_{ij}\rho_{ij}$, gives
 $\NEff$ effectively independent series where \NumForecastAssets{} are
 forecast. The day-level tests in Table~\ref{tab:baselines} are the more honest
-ones for that reason. With \PrimaryDays{} forecast days, no forecasting
+ones for that reason. Clustering by day absorbs correlation within a day. It
+does not absorb overlap between days: one-week forecasts written on
+consecutive days share most of their target window, so neighbouring days are
+not independent either. With \PrimaryDays{} forecast days, no forecasting
 conclusion here should be read as more than ``not demonstrated''.
 
 \section{Operational failure telemetry}\label{sec:errors}
@@ -429,6 +435,22 @@ agent returns to failure classes it has already documented, and writing a
 failure down did not prevent its recurrence. There is no control arm, so this
 rate has nothing to be compared against.
 
+\paragraph{The longest-hidden errors were right most of the time.} The two
+records at the top of the latency distribution are not omissions.
+\LatMaxRecord{} (\LatMax{} days, class \texttt{\LatMaxClass}) is a clash in
+the evidence table: one scheduled release had been entered under two units and
+two spellings of its name on different days. Every row was correct on its own,
+and nothing compared them until the field was about to be used in a
+pre-registered test. \LatSecondRecord{} (\LatSecond{} days, class
+\texttt{\LatSecondClass}) is a stored index level. The daily run read it at
+the start of the session, so the stored value was an intraday reading and the
+day-to-day change built from it ran morning to morning, not close to close. On
+most days the two agree, because the index has barely moved by the time the
+run starts. They part on days with a large move after the reading, which are
+the days the field exists for. Each correct day made the next one less likely
+to be checked. It surfaced when a jump alarm fired on a real move and
+verifying the move exposed the reading time.
+
 \paragraph{H7: latency does not fall over time.} The pre-registered test is a
 Spearman rank correlation between record order and latency, with the
 prediction that latency falls as the process matures. Over \SpearN{} records
@@ -465,10 +487,11 @@ did not apply it. A document is not an enforcement point.
 
 We are deliberate about the count. Three entries in Table~\ref{tab:mechanism}
 are clear instances: a documented rule existed, nothing enforced it, and the
-omission had a cost. Two further records are adjacent but weaker. One is a
-missing validation and not an unfollowed rule; the other is a wrong causal
-diagnosis that was later corrected. We list all five and mark which is which,
-and we do not report ``five instances'' of a category stretched to fit.
+omission had a cost. Three further records are adjacent but weaker. One is a
+missing validation and not an unfollowed rule, one is a wrong causal diagnosis
+that was later corrected, and one is a mechanism that existed and did not
+cover the path the failure took. We list all six and mark which is which, and
+we do not report ``six instances'' of a category stretched to fit.
 
 \begin{table}[t]
 \centering
@@ -491,6 +514,10 @@ K80 & adjacent & 0 d & Market-state fields silently disappeared between days.
 A missing validation, not an unfollowed rule. \\
 K87 & adjacent & 1 d & A prior diagnosis of a provider anomaly was itself
 wrong. The behavioural rule survived; its stated cause did not. \\
+K118 & adjacent & \KOneOneEightLat{} d & A check for index readings taken
+before the session settled had been added to the ledger. Hours later the agent
+quoted such a reading to the supervisor in conversation. The mechanism
+existed; its scope was the ledger. \\
 \bottomrule
 \end{tabular}
 \caption{Instances of the pattern, with an explicit judgement of fit. Record
@@ -519,6 +546,17 @@ respect that matters for attribution: the party who had to remember was the
 human supervisor, not the agent in the middle of a task. We count it as clear
 because the structure is identical. A rule was written, repeated
 \SkipChainN{} times, and never given a mechanism.
+
+\paragraph{A mechanism has a scope.} K118 belongs in the table because it runs
+the other way. After an intraday index reading had been mistaken for a close
+(\LatSecondRecord, \S\ref{sec:errors}), the agent built the check the clear
+cases lacked, and the check worked on the ledger. The same afternoon the agent
+told the supervisor that an index had closed up by an amount it had read
+before the final hour, and the actual close was several times larger. The
+ledger never held the wrong number, so no ledger check could have seen it.
+Mechanising a rule is necessary and still leaves a gap: a mechanism covers the
+path it is wired into, and an agent that talks to people has paths no check
+reads.
 
 \paragraph{Why this should generalise.} The pattern does not depend on the
 particular agent or task. It depends on a structural asymmetry. An agent that
@@ -557,7 +595,7 @@ whether the agent would have caught what the human caught.
 \paragraph{Self-categorisation, not just self-report.} The agent also chose
 the error classes, designed the controlled vocabulary they belong to, and
 decided which records count as instances of the pattern in
-\S\ref{sec:mechanism}. That section marks two of five instances as merely
+\S\ref{sec:mechanism}. That section marks three of six instances as merely
 adjacent for this reason, but the marking is itself the agent's judgement.
 
 \paragraph{Classification is partly retrospective.} The controlled vocabulary
@@ -667,10 +705,12 @@ as something better.
 What the process recorded about itself is more useful. Most errors surfaced
 within a day, but \LatGeSeven{} of \ErrN{} took a week or longer and the
 slowest took \LatMax{} days. Close to half of them repeat an earlier record,
-and detection did not get faster over the period. The failures that lasted
-longest or recurred most were not wrong answers. They were rules that had been
-written down and were then not applied, up to and including the rule that the
-process should run at all.
+and detection did not get faster over the period. The two longest-hidden
+failures were values that looked right on most days. The ones that recurred
+most were rules that had been written down and were then not applied, up to
+and including the rule that the process should run at all. And when a
+mechanism was finally built for one failure, it guarded the ledger and missed
+the conversation beside it.
 
 Capability benchmarks answer how often an agent is right. An agent that
 maintains something also needs its being wrong to become visible, and the
