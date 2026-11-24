@@ -30,7 +30,7 @@ BUILTIN = re.compile(
     r"providecommand|ifdefined|fi|else|relax|space|"
     r"modelA|modelB|em|it|bf|sl|tt|rm|sf|footnotesize|scriptsize|large|Large|"
     r"subsection|tabcolsep|setlength|ldots|dots|textit|medskip|smallskip|"
-    r"chi|mathbf)$")
+    r"chi|mathbf|appendix)$")
 
 
 # Literals that are legitimately not data. Each needs a reason.

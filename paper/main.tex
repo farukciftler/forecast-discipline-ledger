@@ -97,7 +97,9 @@ made while running the process, with detection latency and attribution.
 \begin{enumerate}
   \item A released, anonymised, longitudinal dataset of language-model agent
         operational errors with detection mechanism, detecting party, and
-        detection latency in days (\S\ref{sec:errors}).
+        detection latency in days (\S\ref{sec:errors}), documented file by
+        file and checked for internal consistency in
+        Appendix~\ref{app:dataset}.
   \item Pre-registered null results on short-horizon forecasting, with every
         pre-registered hypothesis either tested or reported as below its
         minimum sample (\S\ref{sec:forecast}).
@@ -394,8 +396,9 @@ conclusion here should be read as more than ``not demonstrated''.
 Every operational mistake is logged with a controlled vocabulary: an error
 class (eight values), the mechanism that caught it (ten values), the detecting
 party (agent or human), the direction of the resulting correction, and the
-number of days between the event and its detection. Table~\ref{tab:errors}
-summarises the log for the window.
+number of days between the event and its detection. Both vocabularies are
+listed in Appendix~\ref{app:dataset}. Table~\ref{tab:errors} summarises the
+log for the window.
 
 \begin{table}[t]
 \centering
@@ -628,6 +631,8 @@ after \WindowEnd; later records are not part of this paper or of the release
 it analyses. The repository contains the pre-registration with its dated
 amendments, methods, codebook, case descriptions, and dependency-free scripts
 that regenerate every number in this paper from the released files.
+Appendix~\ref{app:dataset} describes each file, the anonymisation procedure
+and the integrity checks run on the release.
 
 The exporter that produces the anonymised release and the independent auditor
 that verifies it are deliberately \emph{not} published: the exporter carries
@@ -672,6 +677,252 @@ maintains something also needs its being wrong to become visible, and the
 evidence here is that writing the lesson down does not make it so. Whether
 that holds beyond one agent and one task is what this sample cannot say, which
 is why the data is released and not only summarised.
+
+\appendix
+
+\section{The dataset}\label{app:dataset}
+
+This appendix documents the release that the paper analyses: its files, the
+anonymisation that makes it publishable, the integrity checks run on it and
+notes for reuse. It reports counts and the outcomes of those checks, and no
+further analysis.
+
+\subsection{Files}\label{app:files}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lrp{9.2cm}}
+\toprule
+File & Rows & Content \\
+\midrule
+\TabFiles
+\bottomrule
+\end{tabular}
+\caption{Data files. All are UTF-8, comma-separated, with a header row and
+dates in year-month-day form.}
+\label{tab:files}
+\end{table}
+
+The repository holds a \texttt{data/} directory with the \NumFiles{} files of
+Table~\ref{tab:files}, documentation in Markdown, and an \texttt{analysis/}
+directory with two scripts.
+
+\paragraph{\texttt{assets.csv}.} A pseudonym (\texttt{A1} to \texttt{A8}), an
+asset class (\texttt{spot}, \texttt{fund\_daily} or \texttt{fx\_deposit}) and a
+generic description of composition and pricing mechanics. \NumForecastAssets{}
+of the \NumAssets{} assets are forecast; the other two are priced but not
+forecast.
+
+\paragraph{\texttt{study\_window.csv}.} One row: the first and last day of the
+window, its length in calendar days, the number of days the local market was
+open, how many of those the routine covered and missed, the longest run of
+missed market days, the length of the missed run that ends the window, and
+the number of closed days on which the routine ran. The market calendar
+itself is not published.
+
+\paragraph{\texttt{forecasts.csv}.} \NumForecastCols{} columns. The date the
+forecast was sealed; the asset; the horizon (\NumOneDay{} rows at one day,
+\NumOneWeek{} at one week, \NumOneMonth{} at one month) and the target date;
+the point estimate, interval bounds, interval width and asymmetry in per cent;
+the up-move probability; the confidence label; the count and highest weight
+of the evidence items cited; a flag for the \NumMechanical{} forecasts
+produced by a deterministic calculation; the pseudonymised model version; and
+the bounds and rule name of the shadow interval, present in \NumShadowRows{}
+rows.
+
+\paragraph{\texttt{resolutions.csv}.} \NumResolutionCols{} columns, keyed by
+sealing date, asset and horizon. The status is \texttt{resolved} in
+\NumResolved{} rows, \texttt{no\_data} in \NumNoData{} and
+\texttt{no\_base\_price} in \NumNoBase. Resolved rows give the realised change,
+the absolute and signed error, the interval indicator, the direction
+indicator, the Brier score, the three baseline predictions, an indicator for
+each baseline of whether the forecast's absolute error was smaller, and an
+indicator for all three at once. Further columns record the protocol version,
+the model version, the type of day, and whether the row belongs to the
+1-month horizon. A flag marks the \NumDirty{} resolved rows whose target day
+had no price snapshot and which were resolved against a later day.
+
+\paragraph{\texttt{error\_log.csv}.} \NumErrorCols{} columns. Records run from
+\ErrFirst{} to \ErrLast{} and were logged between \ErrFirstDate{} and
+\ErrLastDate. Each has the date it was logged and the date the error occurred;
+their difference, the latency, ranges from \LatMin{} to \LatMax{} days.
+\ErrAgent{} records were detected by the agent and \ErrHuman{} by the human.
+\RepK{} are flagged as repeats of an earlier record, and \ErrLinked{} name an
+earlier record. Class and mechanism use the vocabularies of
+Tables~\ref{tab:classes} and~\ref{tab:mechanisms}. A final column states
+whether the resulting correction moved one of the ledger's own scores in the
+agent's favour (\EffFav{} rows), against it (\EffUnfav), neither
+(\EffNeutral), or is blank (\EffBlank).
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lp{9.4cm}r}
+\toprule
+Class & Meaning & Rows \\
+\midrule
+\TabClasses
+\bottomrule
+\end{tabular}
+\caption{Error classes.}
+\label{tab:classes}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\small
+\begin{tabular}{lp{8.4cm}r}
+\toprule
+Mechanism & Meaning & Rows \\
+\midrule
+\TabMechanisms
+\bottomrule
+\end{tabular}
+\caption{Detection mechanisms.}
+\label{tab:mechanisms}
+\end{table}
+
+\paragraph{\texttt{returns.csv}.} The date, the day of the week, the asset,
+the percentage change from the previous observed price, the number of
+calendar days since that observation, and a flag set in \NumStale{} rows where
+a price was carried forward. Price levels are not published.
+
+\paragraph{\texttt{market\_state.csv}.} Date, variable, value. \NumVars{}
+variables over \NumMarketDays{} days: government yields, equity index levels,
+implied-volatility indices, a credit spread, policy rates, exchange rates and
+commodity quotes. Variables specific to the local market appear under role
+labels such as \texttt{domestic\_equity\_index}.
+
+\paragraph{\texttt{exposure.csv}.} The portfolio's exposure by underlying
+asset class, in per cent, with the age of the composition data used:
+\NumExpClasses{} classes over \NumExpDays{} days.
+
+\paragraph{\texttt{decisions.csv}.} \NumDecisions{} allocation decisions, each
+listed at three scoring horizons with the option taken and the alternatives
+recorded at the time, expressed as weights that sum to one. There are too few
+for any statistical use and none is made of them here.
+
+\subsection{Anonymisation}\label{app:anon}
+
+The source ledger is a private record of one household's holdings. The
+release is produced from it by an exporter built on four rules.
+
+\paragraph{Allowlist.} A column is written only if it is named in the
+exporter. A field added to the source ledger is therefore not exported by
+default. A blocklist has the opposite default and leaks silently as a schema
+grows.
+
+\paragraph{No levels, no amounts.} Prices appear only as percentage returns
+and portfolio composition only as percentage weights. Amounts, balances and
+unit counts are not exported in any form.
+
+\paragraph{Pseudonyms.} Assets, model versions and decisions are replaced by
+pseudonyms through mappings that exist only in the private repository.
+Variables specific to the local market are renamed by role. The market
+calendar is not published, because holiday dates identify a country; only
+counts derived from it appear.
+
+\paragraph{A gate on values.} An allowlist of columns does not protect against
+a legitimate column carrying an identifying value. Every categorical value is
+therefore translated through a closed mapping, and the export stops if it
+meets a value with no entry. The gate checks form as well as vocabulary, and
+it still missed one case, corrected in this release: decision identifiers had
+been free-form strings carried over from the source ledger, in a shape the
+gate accepted. They are pseudonyms now.
+
+Two audits then run on the output: a search of every cell for identifying
+terms, and a search of column names for patterns that indicate amounts or
+free text. The second exists because a number in a cell looks innocent and
+the name of its column does not. A separate script repeats the audit from
+outside the exporter on whatever the release directory contains.
+
+\subsection{Integrity checks}\label{app:validation}
+
+The following checks are run on the released files by the script that
+generates this paper's numbers. Each is stated with its outcome.
+
+\paragraph{Keys.} Forecast keys (sealing date, asset, horizon) are unique:
+\VDupForecastKeys{} duplicates. Resolution keys are unique:
+\VDupResolutionKeys{} duplicates. Every resolution row matches a forecast:
+\VOrphanResolutions{} do not. \VUnresolvedForecasts{} forecasts have no
+resolution row, as the release rule implies for forecasts whose target date
+falls after the window.
+
+\paragraph{Forecast records.} The point estimate lies inside its interval in
+every row (\VPointOutsideBand{} exceptions). Every probability lies between
+zero and one (\VProbOutOfRange{} exceptions). Every target date is later than
+its sealing date (\VTargetBeforeAsOf{} exceptions).
+
+\paragraph{Scores recompute.} For the \VBandChecked{} resolved rows, the
+interval indicator was recomputed from the realised change and the interval
+bounds: \VBandMismatch{} disagree. The absolute error was recomputed from the
+point estimate and the realised change: \VErrMismatch{} disagree beyond
+rounding. The joint baseline indicator equals the conjunction of the three
+single indicators in all \VBeatChecked{} rows that carry all four
+(\VBeatMismatch{} exceptions). No row with a status other than
+\texttt{resolved} carries a realised value (\VUnflaggedNonResolved{}
+exceptions).
+
+\paragraph{One rounding artefact.} Recomputing the naive-baseline indicator
+from published values disagrees with the published indicator in
+\VNaiveMismatch{} of \VNaiveChecked{} rows. Published values are rounded,
+while the engine compared unrounded ones, and in \VNaiveTies{} rows the two
+absolute errors are equal at published precision. The disagreeing row is one
+of those ties. Anyone recomputing indicators from the published columns
+should treat ties as undetermined.
+
+\paragraph{Error log.} Latency equals the logging date minus the event date in
+every record (\VLatencyMismatch{} exceptions). Every linked record exists
+(\VPriorMissing{} missing) and precedes the record that names it
+(\VPriorNotEarlier{} exceptions).
+
+\paragraph{Two inconsistencies in the link field.} The codebook originally
+defined the link to an earlier record as present exactly when a record is
+flagged as a repeat. The data do not satisfy that. \VRepeatWithoutLink{}
+record flagged as a repeat carries no link (\VRepeatWithoutLinkId), and
+\VLinkWithoutRepeat{} records carry a link without being flagged as repeats;
+in those the link marks a related earlier record, not a recurrence. The log
+is append-only, so the rows were left as they are and the codebook was
+corrected to describe them. The repeat rate in \S\ref{sec:errors} uses the
+repeat flag, and the chain in \S\ref{sec:mechanism} uses links between records
+that carry it.
+
+\paragraph{Window and totals.} No row in any dated file falls outside the
+window (\VOutsideWindow{} exceptions), and no resolution has a target date
+after it (\VTargetOutsideWindow{} exceptions). Exposure weights sum to one
+hundred per cent on every day (\VExposureNotHundred{} exceptions beyond
+rounding).
+
+\paragraph{What these checks do not establish.} They test internal
+consistency. They say nothing about whether an error record describes what
+happened, whether an error was classified correctly, or how many errors were
+never logged.
+
+\subsection{Notes for reuse}\label{app:usage}
+
+\paragraph{Pooling.} The pre-registration forbids pooling rows written under
+different protocol versions and treats the 1-month horizon as unmeasurable at
+this sample size. Both are recorded per row, so a user can apply or relax the
+rule knowingly.
+
+\paragraph{Flagged substitutions.} Rows flagged as resolved against a later
+day do not measure the stated horizon and should be excluded.
+
+\paragraph{Dependence.} Forecasts written on the same day for different
+horizons of one asset, and for assets that move together, are correlated. The
+files contain enough to cluster by day. Row counts overstate the effective
+sample.
+
+\paragraph{Two structural features of the assets.} The funds publish their
+price one business day late, so a 1-day fund forecast may have been written
+after part of the session it is scored on had traded. One asset is a deposit
+under a managed exchange rate and rose on nearly every day of the window.
+Analyses that pool assets should account for both.
+
+\paragraph{The error log is a record of detected errors.} Latency is
+measurable from it. An error rate is not, because the number of undetected
+errors is unknown.
 
 \bibliographystyle{plain}
 \bibliography{refs}

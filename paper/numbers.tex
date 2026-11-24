@@ -4,7 +4,7 @@
 % The data is a frozen release, so this file is deterministic:
 % regenerating it on any day must reproduce it byte for byte.
 
-\newcommand{\NumbersStamp}{175 values, window 2026-08-01 to 2026-10-31}
+\newcommand{\NumbersStamp}{234 values, window 2026-08-01 to 2026-10-31}
 
 \newcommand{\AbsMean}{8.7}
 \newcommand{\AbsMedian}{1.0}
@@ -63,6 +63,7 @@
 \newcommand{\DayNaiveN}{56}
 \newcommand{\DayNaiveP}{0.041}
 \newcommand{\DayNaiveWon}{35}
+\newcommand{\EffBlank}{51}
 \newcommand{\EffFav}{11}
 \newcommand{\EffFavShare}{0.355}
 \newcommand{\EffHi}{0.530}
@@ -73,7 +74,12 @@
 \newcommand{\EffUnfav}{20}
 \newcommand{\ErrAgent}{116}
 \newcommand{\ErrAgentShare}{0.795}
+\newcommand{\ErrFirst}{K1}
+\newcommand{\ErrFirstDate}{2026-08-01}
 \newcommand{\ErrHuman}{30}
+\newcommand{\ErrLast}{K146}
+\newcommand{\ErrLastDate}{2026-10-23}
+\newcommand{\ErrLinked}{97}
 \newcommand{\ErrN}{146}
 \newcommand{\FirstDay}{2026-08-01}
 \newcommand{\FxMeanPup}{0.72}
@@ -92,6 +98,7 @@
 \newcommand{\LatMax}{60}
 \newcommand{\LatMean}{6.0}
 \newcommand{\LatMedian}{1}
+\newcommand{\LatMin}{0}
 \newcommand{\LatPninety}{19}
 \newcommand{\LatPninetyfive}{30}
 \newcommand{\LatPseventyfive}{7}
@@ -126,16 +133,40 @@
 \newcommand{\ModelDWritten}{18}
 \newcommand{\NEff}{3.0}
 \newcommand{\NumAssets}{8}
+\newcommand{\NumClasses}{8}
 \newcommand{\NumDays}{77}
+\newcommand{\NumDecisionRows}{54}
+\newcommand{\NumDecisions}{3}
 \newcommand{\NumDirty}{24}
 \newcommand{\NumEarlierProto}{108}
+\newcommand{\NumErrorCols}{10}
+\newcommand{\NumExpClasses}{8}
+\newcommand{\NumExpDays}{75}
+\newcommand{\NumExposureRows}{600}
+\newcommand{\NumFiles}{9}
 \newcommand{\NumForecastAssets}{6}
+\newcommand{\NumForecastCols}{20}
+\newcommand{\NumMarketDays}{77}
+\newcommand{\NumMarketRows}{2024}
+\newcommand{\NumMechanical}{40}
+\newcommand{\NumMechanisms}{10}
 \newcommand{\NumModels}{4}
+\newcommand{\NumNoBase}{58}
+\newcommand{\NumNoData}{72}
 \newcommand{\NumNotScored}{274}
+\newcommand{\NumOneDay}{455}
+\newcommand{\NumOneMonth}{451}
+\newcommand{\NumOneWeek}{455}
 \newcommand{\NumProjection}{273}
 \newcommand{\NumProtocols}{4}
+\newcommand{\NumResolutionCols}{30}
+\newcommand{\NumResolutionRows}{1241}
 \newcommand{\NumResolved}{1111}
+\newcommand{\NumReturnRows}{383}
 \newcommand{\NumScoredAll}{1087}
+\newcommand{\NumShadowRows}{315}
+\newcommand{\NumStale}{9}
+\newcommand{\NumVars}{32}
 \newcommand{\NumWritten}{1361}
 \newcommand{\OpenCovered}{58}
 \newcommand{\OpenDays}{64}
@@ -177,6 +208,34 @@
 \newcommand{\SpearN}{146}
 \newcommand{\SpearP}{0.929}
 \newcommand{\SpearRho}{+0.12}
+\newcommand{\TabClasses}{\texttt{measurement} & a scored observation was computed wrongly, or should not have counted & 35 \\ \texttt{model} & a wrong assumption about how an asset behaves & 26 \\ \texttt{data} & a source failed, returned a stale value, or was read without its date & 21 \\ \texttt{process} & a required step of the daily routine was skipped & 20 \\ \texttt{engine} & the deterministic ledger code behaved wrongly & 14 \\ \texttt{verification} & a checking step failed or was skipped & 11 \\ \texttt{institution} & a wrong assumption about how a product settles or pays & 10 \\ \texttt{accounting} & double counting or mis-attribution between holdings & 9 \\}
+\newcommand{\TabFiles}{\texttt{assets.csv} & 8 & one row per asset: pseudonym, asset class, generic description \\ \texttt{study\_window.csv} & 1 & the window and how many of its days the routine covered \\ \texttt{forecasts.csv} & 1361 & one row per forecast, as sealed \\ \texttt{resolutions.csv} & 1241 & outcome, scores and baseline predictions for each forecast whose target date fell in the window \\ \texttt{error\_log.csv} & 146 & one row per operational error \\ \texttt{returns.csv} & 383 & daily percentage return per asset \\ \texttt{market\_state.csv} & 2024 & public market variables on each forecast day, long format \\ \texttt{exposure.csv} & 600 & portfolio exposure by underlying asset class, in per cent \\ \texttt{decisions.csv} & 54 & recorded allocation decisions and the alternatives considered, as weights \\}
+\newcommand{\TabMechanisms}{\texttt{routine\_flow} & the ordinary daily sequence surfaced it, without anyone looking for it & 39 \\ \texttt{cross\_check} & two sources of the same quantity disagreed & 23 \\ \texttt{reasoning} & the agent noticed it while thinking about something else & 15 \\ \texttt{human} & the operator noticed it & 15 \\ \texttt{custodian\_statement} & an external account statement contradicted the ledger & 14 \\ \texttt{preregistered\_test} & a test written in advance failed & 14 \\ \texttt{next\_day\_observation} & the following day's data made it visible & 12 \\ \texttt{engine\_warning} & the deterministic code refused or warned & 7 \\ \texttt{adversarial\_review} & a scheduled review pass looking specifically for it & 5 \\ \texttt{reconciliation} & a total was matched against an independent total & 2 \\}
+\newcommand{\VBandChecked}{1111}
+\newcommand{\VBandMismatch}{0}
+\newcommand{\VBeatChecked}{1072}
+\newcommand{\VBeatMismatch}{0}
+\newcommand{\VDupForecastKeys}{0}
+\newcommand{\VDupResolutionKeys}{0}
+\newcommand{\VErrMismatch}{0}
+\newcommand{\VExposureNotHundred}{0}
+\newcommand{\VLatencyMismatch}{0}
+\newcommand{\VLinkWithoutRepeat}{27}
+\newcommand{\VNaiveChecked}{1111}
+\newcommand{\VNaiveMismatch}{1}
+\newcommand{\VNaiveTies}{30}
+\newcommand{\VOrphanResolutions}{0}
+\newcommand{\VOutsideWindow}{0}
+\newcommand{\VPointOutsideBand}{0}
+\newcommand{\VPriorMissing}{0}
+\newcommand{\VPriorNotEarlier}{0}
+\newcommand{\VProbOutOfRange}{0}
+\newcommand{\VRepeatWithoutLink}{1}
+\newcommand{\VRepeatWithoutLinkId}{K129}
+\newcommand{\VTargetBeforeAsOf}{0}
+\newcommand{\VTargetOutsideWindow}{0}
+\newcommand{\VUnflaggedNonResolved}{0}
+\newcommand{\VUnresolvedForecasts}{120}
 \newcommand{\VocabFreezeN}{77}
 \newcommand{\WindowCalDays}{92}
 \newcommand{\WindowEnd}{2026-10-31}

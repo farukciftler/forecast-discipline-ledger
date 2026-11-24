@@ -529,10 +529,147 @@ def main():
     reg("NEff", len(ids) ** 2 / tot, "{:.1f}")
     print(f"  n_eff (k={len(ids)}, rho sum {tot:.2f}) = {MACROS['NEff']}")
 
+    appendix(RES, F, E)
+
     h("S6  Longest-hidden records")
     for r in sorted(E, key=lambda r: -int(r["latency_days"] or 0))[:6]:
         print(f"  {r['record_id']:5s} {r['latency_days']:>4s}d  {r['detected_by']:6s} "
               f"{r['class_k']:12s} {r['mechanism_k']}")
+
+
+# Meanings are copied from CODEBOOK.md; the asserts below fail if the
+# vocabulary in the data and the vocabulary described here ever part ways.
+CLASS_MEANING = {
+    "measurement": "a scored observation was computed wrongly, or should not have counted",
+    "model": "a wrong assumption about how an asset behaves",
+    "data": "a source failed, returned a stale value, or was read without its date",
+    "process": "a required step of the daily routine was skipped",
+    "engine": "the deterministic ledger code behaved wrongly",
+    "verification": "a checking step failed or was skipped",
+    "institution": "a wrong assumption about how a product settles or pays",
+    "accounting": "double counting or mis-attribution between holdings",
+}
+MECHANISM_MEANING = {
+    "routine_flow": "the ordinary daily sequence surfaced it, without anyone looking for it",
+    "cross_check": "two sources of the same quantity disagreed",
+    "reasoning": "the agent noticed it while thinking about something else",
+    "human": "the operator noticed it",
+    "custodian_statement": "an external account statement contradicted the ledger",
+    "reconciliation": "a total was matched against an independent total",
+    "next_day_observation": "the following day's data made it visible",
+    "preregistered_test": "a test written in advance failed",
+    "engine_warning": "the deterministic code refused or warned",
+    "adversarial_review": "a scheduled review pass looking specifically for it",
+}
+
+
+def appendix(RES, F, E):
+    """Counts, tables and integrity checks for the dataset appendix.
+
+    Every claim in the appendix's validation section is RUN here. The
+    manuscript prints the outcome; a check that fails prints a non-zero count
+    and the text says so, because nothing here assumes a check passes.
+    """
+    import datetime
+    h("S7  Dataset appendix: counts")
+    A = load("assets.csv"); RT = load("returns.csv"); MS = load("market_state.csv")
+    X = load("exposure.csv"); DC = load("decisions.csv"); W = load("study_window.csv")[0]
+    tt = lambda x: "\\texttt{%s}" % x.replace("_", "\\_")
+    files = [("assets.csv", len(A), "one row per asset: pseudonym, asset class, generic description"),
+             ("study_window.csv", 1, "the window and how many of its days the routine covered"),
+             ("forecasts.csv", len(F), "one row per forecast, as sealed"),
+             ("resolutions.csv", len(RES), "outcome, scores and baseline predictions for each forecast whose target date fell in the window"),
+             ("error_log.csv", len(E), "one row per operational error"),
+             ("returns.csv", len(RT), "daily percentage return per asset"),
+             ("market_state.csv", len(MS), "public market variables on each forecast day, long format"),
+             ("exposure.csv", len(X), "portfolio exposure by underlying asset class, in per cent"),
+             ("decisions.csv", len(DC), "recorded allocation decisions and the alternatives considered, as weights")]
+    reg("TabFiles", " ".join(f"{tt(a)} & {n} & {d} \\\\" for a, n, d in files))
+    cls = Counter(r["class_k"] for r in E)
+    mec = Counter(r["mechanism_k"] for r in E)
+    assert set(cls) == set(CLASS_MEANING), set(cls) ^ set(CLASS_MEANING)
+    assert set(mec) == set(MECHANISM_MEANING), set(mec) ^ set(MECHANISM_MEANING)
+    reg("TabClasses", " ".join(f"{tt(k)} & {CLASS_MEANING[k]} & {v} \\\\" for k, v in cls.most_common()))
+    reg("TabMechanisms", " ".join(f"{tt(k)} & {MECHANISM_MEANING[k]} & {v} \\\\"
+                                  for k, v in mec.most_common()))
+    reg("NumFiles", len(files))
+    reg("NumResolutionRows", len(RES)); reg("NumReturnRows", len(RT)); reg("NumMarketRows", len(MS))
+    reg("NumExposureRows", len(X)); reg("NumDecisionRows", len(DC))
+    reg("NumDecisions", len({r["decision_id"] for r in DC}))
+    hz = Counter(r["horizon"] for r in F)
+    reg("NumOneDay", hz["1d"]); reg("NumOneWeek", hz["1w"]); reg("NumOneMonth", hz["1m"])
+    reg("NumShadowRows", sum(1 for r in F if r["band_shadow_low"]))
+    reg("NumMechanical", sum(1 for r in F if r["is_mechanical"] == "1"))
+    reg("NumForecastCols", len(F[0])); reg("NumResolutionCols", len(RES[0])); reg("NumErrorCols", len(E[0]))
+    st_ = Counter(r["status"] for r in RES)
+    reg("NumNoData", st_["no_data"]); reg("NumNoBase", st_["no_base_price"])
+    reg("ErrLinked", sum(1 for r in E if r["prior_record"]))
+    lat = [int(r["latency_days"]) for r in E]
+    reg("LatMin", min(lat))
+    reg("ErrFirst", E[0]["record_id"]); reg("ErrLast", E[-1]["record_id"])
+    reg("ErrFirstDate", min(r["logged_date"] for r in E)); reg("ErrLastDate", max(r["logged_date"] for r in E))
+    reg("NumClasses", len(cls)); reg("NumMechanisms", len(mec))
+    reg("EffBlank", sum(1 for r in E if not r["score_effect"]))
+    reg("NumVars", len({r["variable"] for r in MS})); reg("NumMarketDays", len({r["date"] for r in MS}))
+    reg("NumExpClasses", len({r["exposure_class"] for r in X})); reg("NumExpDays", len({r["date"] for r in X}))
+    reg("NumStale", sum(1 for r in RT if r["stale_flag"] == "1"))
+    print(f"  {len(files)} files; forecasts {len(F)}, resolutions {len(RES)}, errors {len(E)}")
+
+    h("S7b  Dataset appendix: integrity checks (each prints its exception count)")
+    fk = [(r["as_of"], r["asset_id"], r["horizon"]) for r in F]
+    rk = [(r["as_of"], r["asset_id"], r["horizon"]) for r in RES]
+    res = [r for r in RES if r["status"] == "resolved"]
+    inb = [r for r in res if r["in_band"] in ("0", "1")]
+    four = ("beat_naive", "beat_drift", "beat_momentum", "beat_all_three")
+    ba = [r for r in res if all(r[c] in ("True", "False") for c in four)]
+    bn = [r for r in res if r["beat_naive"] in ("True", "False") and num(r["baseline_naive_pct"]) is not None]
+    ag = lambda r: abs(num(r["point_pct"]) - num(r["actual_pct"]))
+    nv = lambda r: abs(num(r["baseline_naive_pct"]) - num(r["actual_pct"]))
+    d = datetime.date.fromisoformat
+    pos = {r["record_id"]: i for i, r in enumerate(E)}
+    lk = [r for r in E if r["prior_record"]]
+    dated = [r.get("as_of") or r.get("logged_date") or r.get("date")
+             for rows in (F, RES, E, RT, MS, X) for r in rows]
+    wsum = Counter()
+    for r in X:
+        wsum[r["date"]] += num(r["weight_pct"])
+    checks = [
+        ("VDupForecastKeys", len(fk) - len(set(fk))),
+        ("VDupResolutionKeys", len(rk) - len(set(rk))),
+        ("VOrphanResolutions", len(set(rk) - set(fk))),
+        ("VUnresolvedForecasts", len(set(fk) - set(rk))),
+        ("VPointOutsideBand", sum(1 for r in F if not num(r["low_pct"]) <= num(r["point_pct"]) <= num(r["high_pct"]))),
+        ("VProbOutOfRange", sum(1 for r in F if not 0 <= num(r["p_up"]) <= 1)),
+        ("VTargetBeforeAsOf", sum(1 for r in F if r["target_date"] <= r["as_of"])),
+        ("VBandChecked", len(inb)),
+        ("VBandMismatch", sum(1 for r in inb if (num(r["low_pct"]) <= num(r["actual_pct"]) <= num(r["high_pct"]))
+                              != (r["in_band"] == "1"))),
+        ("VErrMismatch", sum(1 for r in res if num(r["abs_err"]) is not None
+                             and abs(ag(r) - num(r["abs_err"])) > 1e-3)),
+        ("VBeatChecked", len(ba)),
+        ("VBeatMismatch", sum(1 for r in ba if (r["beat_all_three"] == "True")
+                              != all(r[c] == "True" for c in four[:3]))),
+        ("VNaiveChecked", len(bn)),
+        ("VNaiveMismatch", sum(1 for r in bn if (ag(r) < nv(r)) != (r["beat_naive"] == "True"))),
+        ("VNaiveTies", sum(1 for r in bn if abs(ag(r) - nv(r)) < 1e-9)),
+        ("VUnflaggedNonResolved", sum(1 for r in RES if r["status"] != "resolved"
+                                      and num(r["actual_pct"]) is not None)),
+        ("VLatencyMismatch", sum(1 for r in E if (d(r["logged_date"]) - d(r["event_date"])).days
+                                 != int(r["latency_days"]))),
+        ("VPriorMissing", sum(1 for r in lk if r["prior_record"] not in pos)),
+        ("VPriorNotEarlier", sum(1 for r in lk if r["prior_record"] in pos
+                                 and pos[r["prior_record"]] >= pos[r["record_id"]])),
+        ("VRepeatWithoutLink", sum(1 for r in E if r["is_repeat"] == "yes" and not r["prior_record"])),
+        ("VLinkWithoutRepeat", sum(1 for r in E if r["is_repeat"] != "yes" and r["prior_record"])),
+        ("VOutsideWindow", sum(1 for x in dated if not W["window_start"] <= x <= W["window_end"])),
+        ("VTargetOutsideWindow", sum(1 for r in RES if r["target_date"] > W["window_end"])),
+        ("VExposureNotHundred", sum(1 for v in wsum.values() if abs(v - 100) > 0.5)),
+    ]
+    for name, value in checks:
+        reg(name, value)
+        print(f"  {name:24s} {value}")
+    reg("VRepeatWithoutLinkId", ", ".join(r["record_id"] for r in E
+                                          if r["is_repeat"] == "yes" and not r["prior_record"]))
 
 
 def emit_latex(path):
