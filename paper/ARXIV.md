@@ -68,10 +68,11 @@ No `.aux`, `.log`, `.out`. CI checks for those too.
    automatic endorsement. A personal address usually does not.
 2. Link your ORCID (`0009-0001-9310-3812`) in account settings. Submissions
    then appear on your ORCID record automatically.
-3. **Endorsement.** A first submission to `cs.SE` or `cs.AI` normally needs an
-   endorsement from someone who has already published in that category. After
-   step 4 arXiv shows you an endorsement code and a link to send to a
-   colleague. **Start this early: it depends on someone else replying.**
+3. **Endorsement.** arXiv requires endorsement before a first submission to a
+   category. The primary category here is `cs.AI`, where the author is
+   already endorsed. The cross-list page states no separate endorsement
+   requirement for a cross-list; if the submission form asks for one, drop the
+   cross-list and submit with the primary category alone.
 
 ---
 
@@ -82,8 +83,8 @@ No `.aux`, `.log`, `.out`. CI checks for those too.
 | Field | What to enter |
 |---|---|
 | Archive | **Computer Science** |
-| Primary category | **cs.SE** (Software Engineering) |
-| Cross-list | **cs.AI** |
+| Primary category | **cs.AI** (Artificial Intelligence) |
+| Cross-list | **cs.SE** (Software Engineering) |
 | Licence | **CC BY 4.0** — matches the dataset |
 | Title | copy from the compiled PDF |
 | Authors | `Ciftler, Abdullah Faruk` |
