@@ -92,7 +92,7 @@ One row. The release is a frozen window, and this file says what it covers.
 | `latency_days` | `logged − event`. **Never revised downward** |
 | `detected_by` | `agent` · `human` |
 | `is_repeat` | `yes` if it recurred after a prior record covering the same failure |
-| `prior_record` | The earlier `record_id`, when `is_repeat = yes` |
+| `prior_record` | An earlier `record_id` that this record refers back to. Filled for every repeat but one (`K129`), and also for 27 records that are **not** flagged as repeats, where it marks a related earlier record. Filter on `is_repeat` to study recurrence; use `prior_record` alone only for linkage |
 | `class_k` | Closed error taxonomy, eight values (below) |
 | `mechanism_k` | What caught it, ten values (below) |
 | `score_effect` | `favorable` · `unfavorable` · `neutral`, or blank when unknown. Whether the correction moved a reported number in the agent's own favour. A skew toward `favorable` would be bad news, and testing for it is the point of the field |
